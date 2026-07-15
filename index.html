@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two-Team Box Quiz</title>
+<style>
+  /* ============ THEME ============ */
+  :root{
+    --bg:#0e1120; --bg2:#141936; --panel:#1a2040; --panel2:#222a55;
+    --text:#f4f6ff; --muted:#a3ade0; --border:#333d78;
+    --accent:#ffd24a; --accent-text:#241a00;
+    --blue:#5b8cff; --good:#3ddc84; --bad:#ff5d6c; --warn:#ffb14a;
+    --tile-grad:linear-gradient(160deg,#2b357a,#1b2358);
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+  [data-theme="light"]{
+    --bg:#eef1fb; --bg2:#e2e7f8; --panel:#ffffff; --panel2:#eef1fb;
+    --text:#171c33; --muted:#4a5480; --border:#c3cbea;
+    --accent:#c98d00; --accent-text:#ffffff;
+    --blue:#2f5fd0; --good:#0f9d58; --bad:#d43f50; --warn:#c77700;
+    --tile-grad:linear-gradient(160deg,#3a4aa8,#2a3782);
+    --shadow:0 10px 30px rgba(30,40,90,.18);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 700px at 50% -10%, var(--bg2), var(--bg));
+    color:var(--text); min-height:100vh; padding:16px;
+  }
+  /* subtle animated gradient drift behind everything (no flashing) */
+  body::before{content:""; position:fixed; inset:-20%; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(40% 35% at 20% 25%, rgba(91,140,255,.12), transparent 70%),
+      radial-gradient(35% 30% at 80% 70%, rgba(255,210,74,.08), transparent 70%),
+      radial-gradient(45% 40% at 60% 20%, rgba(167,139,250,.10), transparent 70%);
+    animation:bgdrift 26s ease-in-out infinite alternate;}
+  @keyframes bgdrift{from{transform:translate3d(-2%,-1%,0) rotate(0deg);} to{transform:translate3d(2%,2%,0) rotate(3deg);}}
+  button{font:inherit; cursor:pointer; border:none; border-radius:12px;}
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
+    outline:3px solid var(--accent); outline-offset:2px;
+  }
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  input,textarea{font:inherit; color:var(--text); background:var(--panel2);
+    border:2px solid var(--border); border-radius:10px; padding:10px 12px;}
+  .hidden{display:none !important;}
+
+  /* ============ TOP BAR ============ */
+  .topbar{max-width:1200px; margin:0 auto 14px; display:flex; align-items:center;
+    justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .topbar h1{font-size:clamp(1.1rem,2.5vw,1.6rem); letter-spacing:.04em;}
+  .topbar h1 span{color:var(--accent);}
+  .top-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .chipbtn{background:var(--panel); border:2px solid var(--border); color:var(--text);
+    padding:8px 14px; border-radius:999px; font-weight:700; font-size:.9rem;}
+  .chipbtn[aria-pressed="true"]{border-color:var(--accent); color:var(--accent);}
+  .chipbtn.danger-armed{background:var(--bad); border-color:var(--bad); color:#fff;}
+
+  .wrap{max-width:1200px; margin:0 auto;}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:18px;
+    padding:22px; box-shadow:var(--shadow);}
+
+  /* ============ SETUP ============ */
+  #scr-setup .card{max-width:640px; margin:0 auto; text-align:center;}
+  #scr-setup h2{font-size:1.6rem; margin-bottom:6px;}
+  #scr-setup p.sub{color:var(--muted); margin-bottom:20px;}
+  .team-inputs{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:18px;}
+  .team-inputs label{display:block; font-weight:700; margin-bottom:6px; font-size:.9rem; color:var(--muted);}
+  .team-inputs input{width:220px; text-align:center; font-weight:800; font-size:1.05rem;}
+  .toggle-row{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:20px; flex-wrap:wrap;}
+  .toggle-row label{font-weight:700;}
+  .toggle-row .hintline{width:100%; color:var(--muted); font-size:.85rem;}
+  .switch{position:relative; width:56px; height:30px; flex:none;}
+  .switch input{position:absolute; opacity:0; width:100%; height:100%; cursor:pointer;}
+  .switch .track{position:absolute; inset:0; background:var(--panel2); border:2px solid var(--border);
+    border-radius:999px; transition:background .2s;}
+  .switch input:checked + .track{background:var(--good); border-color:var(--good);}
+  .switch .knob{position:absolute; top:4px; left:5px; width:22px; height:22px; border-radius:50%;
+    background:#fff; transition:transform .2s; pointer-events:none;}
+  .switch input:checked ~ .knob{transform:translateX(24px);}
+  .switch input:focus-visible + .track{outline:3px solid var(--accent); outline-offset:2px;}
+
+  /* who-starts picker + optional virtual coin toss */
+  .starter-label{font-weight:800; margin-bottom:12px;}
+  #toss-result{font-size:1.1rem; font-weight:800; min-height:1.6em; margin:14px 0 6px;}
+  #toss-result strong{color:var(--accent);}
+  #virtual-toss{margin:10px auto 0; max-width:420px; text-align:center;}
+  #virtual-toss summary{cursor:pointer; color:var(--muted); font-size:.9rem;
+    font-weight:700; padding:6px; border-radius:8px;}
+  #virtual-toss summary:focus-visible{outline:3px solid var(--accent); outline-offset:2px;}
+  #virtual-toss[open]{background:var(--panel2); border:1px dashed var(--border);
+    border-radius:14px; padding:12px;}
+  .coin-area{display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:12px; margin:10px 0 14px;}
+  .coin{width:96px; height:96px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:2.2rem; font-weight:900; color:var(--accent-text);
+    background:radial-gradient(circle at 32% 28%, #ffe9a0, var(--accent) 65%, #b8860b);
+    box-shadow:0 6px 18px rgba(0,0,0,.4);}
+  .coin.flipping{animation:coinflip 1.7s ease-in-out;}
+  @keyframes coinflip{
+    0%{transform:rotateY(0) translateY(0);}
+    30%{transform:rotateY(540deg) translateY(-40px);}
+    60%{transform:rotateY(1080deg) translateY(0);}
+    80%{transform:rotateY(1440deg) translateY(-12px);}
+    100%{transform:rotateY(1800deg) translateY(0);}
+  }
+  .btn{padding:13px 26px; border-radius:12px; font-weight:800; font-size:1rem;}
+  .btn-primary{background:var(--accent); color:var(--accent-text);}
+  .btn-blue{background:var(--blue); color:#fff;}
+  .btn-good{background:var(--good); color:#04250f;}
+  .btn-bad{background:var(--bad); color:#fff;}
+  .btn-ghost{background:transparent; border:2px solid var(--border); color:var(--text);}
+  .btn-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+  .linklike{background:none; color:var(--muted); text-decoration:underline; font-size:.85rem; padding:6px;}
+
+  /* ============ BOARD ============ */
+  .scorebar{display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:stretch; margin-bottom:16px;}
+  .teamcard{position:relative; background:var(--panel); border:2px solid var(--border); border-radius:16px;
+    padding:14px 18px; transition:border-color .2s, box-shadow .2s;}
+  .tscore.pop{animation:scorepop .7s ease;}
+  @keyframes scorepop{0%{transform:scale(1);} 35%{transform:scale(1.3);} 100%{transform:scale(1);}}
+  .float-pts{position:absolute; top:10px; right:16px; font-weight:900; font-size:1.3rem;
+    color:var(--good); animation:floatup 1.4s ease forwards; pointer-events:none;}
+  @keyframes floatup{from{transform:translateY(0); opacity:1;} to{transform:translateY(-34px); opacity:0;}}
+  .teamcard.active{border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,210,74,.25);}
+  .teamcard .tname{font-weight:900; font-size:clamp(1rem,2vw,1.3rem); margin-bottom:2px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .teamcard .tscore{font-size:clamp(1.8rem,4vw,2.6rem); font-weight:900; color:var(--accent); line-height:1.1;}
+  .teamcard .tmeta{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .badge{font-size:.72rem; font-weight:800; padding:3px 9px; border-radius:999px;
+    background:var(--panel2); border:1px solid var(--border); color:var(--muted);}
+  .badge.ok{color:var(--good); border-color:var(--good);}
+  .badge.off{text-decoration:line-through; opacity:.6;}
+  .badge.gift{color:var(--warn); border-color:var(--warn);}
+  .vs{display:flex; align-items:center; justify-content:center; font-weight:900;
+    color:var(--muted); font-size:1.1rem; padding:0 4px;}
+  #turn-banner{text-align:center; font-size:clamp(1rem,2.4vw,1.35rem); font-weight:800;
+    margin-bottom:14px; min-height:1.6em;}
+  #turn-banner .who{color:var(--accent);}
+  .grid{display:grid; grid-template-columns:repeat(5,1fr); gap:12px;}
+  @media(max-width:720px){ .grid{grid-template-columns:repeat(2,1fr);} .scorebar{grid-template-columns:1fr; } .vs{display:none;} }
+  .tile{background:var(--tile-grad); color:#fff; border:2px solid var(--border);
+    border-radius:14px; aspect-ratio:5/3; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:2px; font-weight:900;
+    transition:transform .12s, filter .12s;}
+  .tile .val{font-size:clamp(1.4rem,3.5vw,2.2rem);}
+  .tile .ltr{font-size:.85rem; opacity:.75; letter-spacing:.12em;}
+  .tile:not(:disabled):hover{transform:translateY(-3px); filter:brightness(1.15);}
+  .tile.used{background:var(--panel); color:var(--muted); opacity:.55;}
+  .tile.pending{background:repeating-linear-gradient(45deg,var(--panel2),var(--panel2) 10px,var(--panel) 10px,var(--panel) 20px);
+    color:var(--warn); border-color:var(--warn); opacity:.95;}
+  .tile.pending .ltr{opacity:1;}
+  .hostbar{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:18px;}
+
+  /* ============ QUESTION OVERLAY ============ */
+  .overlay{position:fixed; inset:0; background:rgba(6,8,20,.86); display:flex;
+    align-items:center; justify-content:center; padding:16px; z-index:50;}
+  .qpanel{width:min(960px,100%); max-height:94vh; overflow-y:auto; background:var(--panel);
+    border:1px solid var(--border); border-radius:20px; padding:clamp(18px,3vw,32px); box-shadow:var(--shadow);
+    animation:panelin .28s ease;}
+  @keyframes panelin{from{transform:scale(.94); opacity:0;} to{transform:scale(1); opacity:1;}}
+  .qhead{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;}
+  .qvalue{font-size:1.3rem; font-weight:900; color:var(--accent);}
+  .qteam{font-weight:800; color:var(--muted);}
+  #q-timer-wrap{margin:8px 0 16px;}
+  #q-time{font-size:clamp(1.6rem,4vw,2.4rem); font-weight:900; text-align:center;
+    font-variant-numeric:tabular-nums;}
+  #q-time.low{color:var(--bad); animation:timepulse 1s ease-in-out infinite;}
+  @keyframes timepulse{50%{transform:scale(1.07);}}
+  .tbar{height:12px; background:var(--panel2); border-radius:999px; overflow:hidden;
+    border:1px solid var(--border); margin-top:6px;}
+  .tbar > div{height:100%; background:var(--good); width:100%; transition:width 1s linear, background .3s;}
+  .tbar > div.low{background:var(--bad);}
+  #q-text{font-size:clamp(1.25rem,3vw,1.9rem); font-weight:800; line-height:1.35;
+    text-align:center; margin:14px 0 18px; min-height:2.4em;}
+  .qnote{background:var(--panel2); border:1px dashed var(--border); border-radius:12px;
+    padding:10px 14px; margin:10px 0; font-weight:700; text-align:center;}
+  .qnote.gift{border-color:var(--warn); color:var(--warn);}
+  .qnote.timeup{border-color:var(--bad); color:var(--bad);}
+  .qnote.hint{border-color:var(--blue); color:var(--text);}
+  .answer-reveal{background:var(--panel2); border:2px solid var(--good); border-radius:14px;
+    padding:14px 18px; margin:12px 0; text-align:center;}
+  .answer-reveal .a{font-size:1.35rem; font-weight:900; color:var(--good);}
+  .answer-reveal .e{color:var(--muted); margin-top:6px; font-size:.95rem;}
+  .hostanswer{display:flex; gap:8px; margin:10px 0; flex-wrap:wrap; justify-content:center;}
+  .hostanswer input{flex:1 1 260px; max-width:440px;}
+  .qactions{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:14px;}
+  .lifelines{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:16px;
+    padding-top:14px; border-top:1px solid var(--border);}
+  .lifelines .lbl{width:100%; text-align:center; color:var(--muted); font-size:.8rem;
+    font-weight:800; letter-spacing:.08em; text-transform:uppercase;}
+  .llbtn{background:var(--panel2); border:2px solid var(--blue); color:var(--text);
+    padding:9px 14px; border-radius:999px; font-weight:800; font-size:.88rem;}
+  .kbdhint{text-align:center; color:var(--muted); font-size:.75rem; margin-top:12px;}
+  kbd{background:var(--panel2); border:1px solid var(--border); border-radius:5px;
+    padding:1px 6px; font-family:inherit; font-weight:800;}
+
+  /* ============ RESULTS / TIEBREAK ============ */
+  #scr-results .card, #scr-tiebreak .card{max-width:680px; margin:0 auto; text-align:center;}
+  #final-title{font-size:clamp(1.6rem,4vw,2.4rem); font-weight:900; margin-bottom:14px;}
+  #final-title .who{color:var(--accent);}
+  .final-scores{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:22px;}
+  .fscore{background:var(--panel2); border:2px solid var(--border); border-radius:14px;
+    padding:14px 26px; min-width:180px;}
+  .fscore.winner{border-color:var(--accent);}
+  .fscore .n{font-weight:800; color:var(--muted);}
+  .fscore .s{font-size:2rem; font-weight:900; color:var(--accent);}
+  #scr-tiebreak textarea{width:100%; min-height:70px; margin-bottom:10px; resize:vertical;}
+  #tb-question-display{font-size:1.5rem; font-weight:900; margin:18px 0;}
+  #tb-answer-display{color:var(--good); font-weight:800; margin-bottom:16px;}
+
+  /* confetti */
+  .confetti{position:fixed; top:-14px; z-index:100; border-radius:2px; pointer-events:none;
+    animation:cfall linear forwards;}
+  @keyframes cfall{ to{transform:translateY(110vh) rotate(720deg); opacity:.6;} }
+
+  /* generic modal */
+  .modal-panel{width:min(520px,100%); background:var(--panel); border:1px solid var(--border);
+    border-radius:18px; padding:26px; text-align:center; box-shadow:var(--shadow);}
+  .modal-panel h3{margin-bottom:10px;}
+  .modal-panel p{color:var(--muted); margin-bottom:18px;}
+  .adjust-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; text-align:left;}
+  .adjust-grid label{display:block; font-weight:700; font-size:.85rem; color:var(--muted); margin-bottom:4px;}
+  .adjust-grid input{width:100%;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important; transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>📦 Two-Team <span>Box Quiz</span></h1>
+  <div class="top-actions">
+    <button id="btn-sound" class="chipbtn" aria-pressed="true" aria-label="Toggle sound">🔊 Sound</button>
+    <button id="btn-theme" class="chipbtn" aria-pressed="false" aria-label="Toggle light or dark theme">🌙 Dark</button>
+    <button id="btn-undo" class="chipbtn hidden" aria-label="Undo last action">↩ Undo</button>
+    <button id="btn-adjust" class="chipbtn hidden" aria-label="Manually adjust scores">± Adjust scores</button>
+    <button id="btn-endgame" class="chipbtn hidden" aria-label="End game now">🏁 End game</button>
+    <button id="btn-reset" class="chipbtn hidden" aria-label="Reset game">♻ Reset</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ SETUP SCREEN ============ -->
+  <section id="scr-setup" aria-label="Game setup">
+    <div class="card">
+      <h2>Set up the game</h2>
+      <p class="sub">Two teams · 5 questions each · host runs the show</p>
+      <div class="team-inputs">
+        <div>
+          <label for="in-team1">Team 1 name</label>
+          <input id="in-team1" maxlength="24" value="Team Alpha">
+        </div>
+        <div>
+          <label for="in-team2">Team 2 name</label>
+          <input id="in-team2" maxlength="24" value="Team Omega">
+        </div>
+      </div>
+      <div class="toggle-row">
+        <label for="in-mystery">🎁 Mystery Rewards</label>
+        <span class="switch">
+          <input type="checkbox" id="in-mystery">
+          <span class="track"></span><span class="knob"></span>
+        </span>
+        <span class="hintline">A few boxes hide a small surprise perk (max one per team, never game-deciding).</span>
+      </div>
+      <p class="starter-label">🪙 Toss a real coin, then tap the winner:</p>
+      <div class="btn-row">
+        <button id="btn-pick1" class="btn btn-blue">Team 1 starts</button>
+        <button id="btn-pick2" class="btn btn-blue">Team 2 starts</button>
+      </div>
+      <div id="toss-result" role="status" aria-live="polite">Waiting for the coin toss…</div>
+      <details id="virtual-toss">
+        <summary>No coin handy? Flip a virtual one</summary>
+        <div class="coin-area">
+          <div class="coin" id="coin" aria-hidden="true">✦</div>
+        </div>
+        <div class="btn-row">
+          <button id="btn-heads" class="chipbtn">Team 1 calls Heads</button>
+          <button id="btn-tails" class="chipbtn">Team 1 calls Tails</button>
+        </div>
+      </details>
+      <div class="btn-row" style="margin-top:14px;">
+        <button id="btn-start" class="btn btn-primary" disabled>▶ Start game</button>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="linklike" id="btn-cleardata">clear saved data</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BOARD SCREEN ============ -->
+  <section id="scr-board" class="hidden" aria-label="Question board">
+    <div class="scorebar">
+      <div class="teamcard" id="tc-0">
+        <div class="tname"></div>
+        <div class="tscore">0</div>
+        <div class="tmeta"></div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="teamcard" id="tc-1">
+        <div class="tname"></div>
+        <div class="tscore">0</div>
+        <div class="tmeta"></div>
+      </div>
+    </div>
+    <div id="turn-banner" role="status" aria-live="polite"></div>
+    <div class="grid" id="board-grid" role="grid" aria-label="Question boxes"></div>
+    <div class="hostbar">
+      <span class="kbdhint">Host keys during a question:
+        <kbd>Space</kbd> pause · <kbd>C</kbd> correct · <kbd>W</kbd> wrong ·
+        <kbd>R</kbd> reveal · <kbd>H</kbd> hint · <kbd>E</kbd> extra time</span>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS SCREEN ============ -->
+  <section id="scr-results" class="hidden" aria-label="Final results">
+    <div class="card">
+      <div id="final-title"></div>
+      <div class="final-scores" id="final-scores"></div>
+      <div class="btn-row" id="results-actions">
+        <button id="btn-tiebreak" class="btn btn-blue hidden">⚖ Play tie-breaker</button>
+        <button id="btn-rematch" class="btn btn-primary">🔁 Restart same teams</button>
+        <button id="btn-newgame" class="btn btn-ghost">✨ New game</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TIE-BREAKER SCREEN ============ -->
+  <section id="scr-tiebreak" class="hidden" aria-label="Tie-breaker">
+    <div class="card">
+      <h2 style="margin-bottom:6px;">⚖ Tie-breaker</h2>
+      <p class="sub" style="color:var(--muted); margin-bottom:16px;">
+        Sudden death — no lifelines, no points. First correct answer wins the game.</p>
+      <div id="tb-edit">
+        <label for="tb-q" style="display:block; text-align:left; font-weight:700; margin-bottom:4px;">Question (host can edit)</label>
+        <textarea id="tb-q"></textarea>
+        <label for="tb-a" style="display:block; text-align:left; font-weight:700; margin-bottom:4px;">Answer (host only)</label>
+        <textarea id="tb-a"></textarea>
+        <div class="btn-row"><button id="btn-tb-show" class="btn btn-primary">Show question</button></div>
+      </div>
+      <div id="tb-live" class="hidden">
+        <div id="tb-question-display"></div>
+        <button id="btn-tb-reveal" class="btn btn-ghost" style="margin-bottom:14px;">Reveal answer</button>
+        <div id="tb-answer-display" class="hidden"></div>
+        <div class="btn-row">
+          <button id="btn-tb-t1" class="btn btn-good"></button>
+          <button id="btn-tb-t2" class="btn btn-good"></button>
+        </div>
+        <div class="btn-row" style="margin-top:12px;">
+          <button id="btn-tb-again" class="linklike">No winner — ask another question</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ QUESTION OVERLAY ============ -->
+<div id="q-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="q-text">
+  <div class="qpanel">
+    <div class="qhead">
+      <span class="qvalue" id="q-value"></span>
+      <span class="qteam" id="q-team"></span>
+    </div>
+
+    <!-- mystery swap decision (shown instead of the question until decided) -->
+    <div id="q-swap" class="hidden">
+      <div class="qnote gift">🎁 Mystery Reward! You may put this box back and choose a different one.</div>
+      <div class="qactions">
+        <button id="btn-swap-keep" class="btn btn-primary">Keep this box</button>
+        <button id="btn-swap-go" class="btn btn-blue">Choose another box</button>
+      </div>
+    </div>
+
+    <div id="q-main">
+      <div id="q-gift-note" class="qnote gift hidden"></div>
+      <div id="q-timer-wrap">
+        <div id="q-time" aria-live="polite">0:00</div>
+        <div class="tbar"><div id="q-bar"></div></div>
+      </div>
+      <div id="q-text"></div>
+      <div id="q-timeup" class="qnote timeup hidden" role="alert">⏰ Time's up — host decides: correct or wrong.</div>
+      <div id="q-hint" class="qnote hint hidden"></div>
+      <div id="q-retry" class="qnote gift hidden">🎁 Second attempt! 20 seconds on the clock.</div>
+
+      <div class="hostanswer">
+        <input id="q-answer-in" placeholder="Type the team's answer (optional)" aria-label="Team's spoken answer">
+        <button id="btn-submit" class="btn btn-ghost">Submit</button>
+      </div>
+      <div id="q-submitted" class="qnote hidden"></div>
+
+      <div id="q-reveal" class="answer-reveal hidden">
+        <div class="a" id="q-reveal-a"></div>
+        <div class="e" id="q-reveal-e"></div>
+      </div>
+      <div id="q-result" class="qnote hidden" role="status"></div>
+
+      <div class="qactions" id="q-judge">
+        <button id="btn-pause" class="btn btn-ghost" aria-label="Pause or resume timer">⏸ Pause</button>
+        <button id="btn-minus10" class="btn btn-ghost" aria-label="Remove 10 seconds">−10s</button>
+        <button id="btn-plus10" class="btn btn-ghost" aria-label="Add 10 seconds">+10s</button>
+        <button id="btn-revealbtn" class="btn btn-blue">👁 Reveal answer</button>
+        <button id="btn-correct" class="btn btn-good">✔ Correct</button>
+        <button id="btn-wrong" class="btn btn-bad">✘ Wrong</button>
+      </div>
+      <div class="qactions hidden" id="q-continue-row">
+        <button id="btn-continue" class="btn btn-primary">Continue ▶</button>
+      </div>
+
+      <div class="lifelines" id="q-lifelines">
+        <span class="lbl">Lifelines — one per team for the whole game</span>
+        <button class="llbtn" id="ll-time">⏱ Extra time +30s</button>
+        <button class="llbtn" id="ll-hint">💡 Hint</button>
+        <button class="llbtn" id="ll-first">🔤 First letter</button>
+        <button class="llbtn" id="ll-skip">⏭ Skip &amp; return</button>
+        <button class="llbtn hidden" id="ll-gift-hint">🎁 Mystery hint</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GENERIC MODAL ============ -->
+<div id="modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-panel">
+    <h3 id="modal-title"></h3>
+    <p id="modal-body"></p>
+    <div id="modal-extra"></div>
+    <div class="btn-row" id="modal-actions"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ================================================================
+   QUESTION BANK — EDIT ME!
+   Replace the sample questions freely. Fields per box:
+     id              — keep as is (drives the board layout)
+     points          — keep as is (drives scoring and timer length)
+     question        — the open-ended question read to the team
+     answer          — the correct answer (shown on reveal)
+     acceptedAnswers — alternative spellings/phrasings; the host's
+                       typed answer is auto-checked against these
+     hint            — shown by the Hint lifeline
+     firstLetter     — shown by the First Letter lifeline
+     explanation     — optional, shown after the answer is revealed
+   ================================================================ */
+const QUESTION_BANK = {
+  boxes: [
+    { id:"100A", points:100,
+      question:"Who built the ark that saved his family from the flood?",
+      answer:"Noah",
+      acceptedAnswers:["Noe"],
+      hint:"He had three sons: Shem, Ham and Japheth.",
+      firstLetter:"N",
+      explanation:"Genesis 6–9 — God told Noah to build the ark before sending the flood." },
+    { id:"100B", points:100,
+      question:"In which town was Jesus born?",
+      answer:"Bethlehem",
+      acceptedAnswers:["Bethlehem of Judea"],
+      hint:"It is also called the City of David.",
+      firstLetter:"B",
+      explanation:"Luke 2:4–7 — foretold by the prophet Micah (Micah 5:2)." },
+    { id:"200A", points:200,
+      question:"Which prophet was swallowed by a great fish after running away from God?",
+      answer:"Jonah",
+      acceptedAnswers:["Jonas"],
+      hint:"He boarded a ship headed for Tarshish instead of going to Nineveh.",
+      firstLetter:"J",
+      explanation:"Jonah 1:17 — he spent three days and three nights inside the fish." },
+    { id:"200B", points:200,
+      question:"What two things did David use to defeat Goliath?",
+      answer:"A sling and a stone",
+      acceptedAnswers:["Sling and stone","A sling and stone","Sling and a stone","Slingshot and stone"],
+      hint:"He picked five smooth stones from the stream but needed only one.",
+      firstLetter:"S",
+      explanation:"1 Samuel 17 — David refused Saul's armour and trusted God instead." },
+    { id:"300A", points:300,
+      question:"Who interpreted Pharaoh's dreams and became second-in-command over Egypt?",
+      answer:"Joseph",
+      acceptedAnswers:["Josef"],
+      hint:"His jealous brothers sold him, and he once wore a famous colourful coat.",
+      firstLetter:"J",
+      explanation:"Genesis 41 — the dreams foretold seven years of plenty and seven of famine." },
+    { id:"300B", points:300,
+      question:"On which mountain did Moses receive the Ten Commandments?",
+      answer:"Mount Sinai",
+      acceptedAnswers:["Sinai","Mt Sinai","Horeb","Mount Horeb"],
+      hint:"The mountain is also called Horeb in some passages.",
+      firstLetter:"S",
+      explanation:"Exodus 19–20 — the covenant was given there after the exodus from Egypt." },
+    { id:"400A", points:400,
+      question:"Which apostle worked as a tax collector before following Jesus?",
+      answer:"Matthew",
+      acceptedAnswers:["Levi","Saint Matthew","St Matthew"],
+      hint:"He is also called Levi, and a Gospel bears his name.",
+      firstLetter:"M",
+      explanation:"Matthew 9:9 — Jesus said 'Follow me', and he left his tax booth at once." },
+    { id:"400B", points:400,
+      question:"What is the shortest verse in the English Bible?",
+      answer:"\"Jesus wept.\" (John 11:35)",
+      acceptedAnswers:["Jesus wept","John 11:35"],
+      hint:"It happens at the tomb of Lazarus.",
+      firstLetter:"J",
+      explanation:"Two words showing Jesus' compassion just before raising Lazarus." },
+    { id:"500A", points:500,
+      question:"Which Old Testament prophet was taken up to heaven in a whirlwind, with chariots of fire appearing?",
+      answer:"Elijah",
+      acceptedAnswers:["Elias"],
+      hint:"His successor watched it happen and picked up his cloak.",
+      firstLetter:"E",
+      explanation:"2 Kings 2:11 — Elisha received a double portion of his spirit." },
+    { id:"500B", points:500,
+      question:"In the book of Revelation, how many churches receive letters?",
+      answer:"Seven",
+      acceptedAnswers:["7","Seven churches"],
+      hint:"Ephesus and Laodicea are two of them.",
+      firstLetter:"S",
+      explanation:"Revelation 2–3 — Ephesus, Smyrna, Pergamum, Thyatira, Sardis, Philadelphia, Laodicea." }
+  ],
+  tiebreaker: {
+    question:"Name BOTH the first and the last books of the Bible.",
+    answer:"Genesis and Revelation"
+  }
+};
+
+/* Timer length (seconds) per point value */
+const TIMER_BY_VALUE = { 100:30, 200:40, 300:50, 400:60, 500:75 };
+const QUESTIONS_PER_TEAM = 5;
+const MYSTERY_BOX_COUNT = 3;   // boxes that secretly hold a reward when enabled
+const SAVE_KEY = "twoTeamBoxQuiz_v1";
+const PREFS_KEY = "twoTeamBoxQuiz_prefs";
+
+/* ================================================================
+   STATE
+   ================================================================ */
+let state = null;          // full game state (saved to localStorage)
+let timerInterval = null;  // runtime only
+let lastAward = null;      // runtime only — drives the score-pop animation
+let prefs = { sound:true, theme:"dark" };
+
+function freshState(names, starter, mysteryOn){
+  const boxes = {};
+  QUESTION_BANK.boxes.forEach(b => boxes[b.id] = { status:"unopened", pendingTeam:null, usedBy:null, gotIt:null });
+  let mysteryBoxes = [];
+  if (mysteryOn){
+    mysteryBoxes = shuffle(QUESTION_BANK.boxes.map(b=>b.id)).slice(0, MYSTERY_BOX_COUNT);
+  }
+  return {
+    phase:"board",
+    teams: names.map(n => ({
+      name:n, score:0, opened:0, resolved:0,
+      lifelineUsed:false, mysteryGot:false, extraHints:0
+    })),
+    currentTeam: starter,
+    boxes, mysteryEnabled:mysteryOn, mysteryBoxes,
+    active:null,          // runtime question info (persisted so refresh mid-question survives)
+    history:[],           // undo snapshots
+    tossWinner: starter
+  };
+}
+
+const $ = id => document.getElementById(id);
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function boxDef(id){ return QUESTION_BANK.boxes.find(b=>b.id===id); }
+function reducedMotion(){ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+
+/* ================================================================
+   SAVE / LOAD
+   ================================================================ */
+function save(){
+  if (state) localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+}
+function clearSave(){ localStorage.removeItem(SAVE_KEY); }
+function loadSave(){
+  try{ const raw = localStorage.getItem(SAVE_KEY); return raw ? JSON.parse(raw) : null; }
+  catch(e){ return null; }
+}
+function savePrefs(){ localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); }
+function loadPrefs(){
+  try{ const p = JSON.parse(localStorage.getItem(PREFS_KEY)); if(p) prefs = Object.assign(prefs,p); }catch(e){}
+  applyPrefs();
+}
+function applyPrefs(){
+  document.documentElement.dataset.theme = prefs.theme;
+  $("btn-theme").textContent = prefs.theme==="dark" ? "🌙 Dark" : "☀️ Light";
+  $("btn-theme").setAttribute("aria-pressed", prefs.theme==="light");
+  $("btn-sound").textContent = prefs.sound ? "🔊 Sound" : "🔇 Muted";
+  $("btn-sound").setAttribute("aria-pressed", String(prefs.sound));
+}
+
+/* ================================================================
+   SOUND (tiny WebAudio beeps, all optional)
+   ================================================================ */
+let audioCtx = null;
+function beep(freq, dur, type, vol, when){
+  if (!prefs.sound) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const t = audioCtx.currentTime + (when||0);
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type||"sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol||0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t+dur+0.05);
+  }catch(e){}
+}
+const sfx = {
+  tick:   ()=> beep(880,.08,"square",.07),
+  timeup: ()=> { beep(220,.4,"sawtooth",.2); beep(180,.5,"sawtooth",.18,.15); },
+  correct:()=> { beep(660,.12,"sine",.2); beep(880,.18,"sine",.2,.12); },
+  wrong:  ()=> { beep(300,.2,"triangle",.2); beep(200,.3,"triangle",.2,.15); },
+  open:   ()=> beep(520,.1,"sine",.12),
+  gift:   ()=> { beep(700,.1,"sine",.15); beep(900,.1,"sine",.15,.1); beep(1100,.15,"sine",.15,.2); }
+};
+
+/* ================================================================
+   SCREENS
+   ================================================================ */
+function showScreen(name){
+  ["scr-setup","scr-board","scr-results","scr-tiebreak"].forEach(s=> $(s).classList.toggle("hidden", s!=="scr-"+name));
+  const inGame = (name==="board");
+  ["btn-undo","btn-adjust","btn-endgame","btn-reset"].forEach(b=> $(b).classList.toggle("hidden", !inGame));
+}
+
+/* ================================================================
+   SETUP + COIN TOSS
+   ================================================================ */
+let tossStarter = null;
+function setStarter(t, viaToss){
+  tossStarter = t;
+  const name = t===0 ? $("in-team1").value.trim()||"Team 1" : $("in-team2").value.trim()||"Team 2";
+  $("toss-result").innerHTML = (viaToss?"🪙 ":"") + "<strong>"+esc(name)+"</strong> starts!";
+  $("btn-start").disabled = false;
+}
+/* Team 1 calls heads or tails; a random flip decides who starts */
+function callToss(call){ // call: 0 = heads, 1 = tails
+  const coin = $("coin");
+  $("btn-heads").disabled = $("btn-tails").disabled = true;
+  $("toss-result").textContent = "Flipping…";
+  const flip = Math.random() < 0.5 ? 0 : 1; // 0 = heads, 1 = tails
+  const winner = (flip === call) ? 0 : 1;
+  const done = ()=>{
+    coin.classList.remove("flipping");
+    coin.textContent = flip === 0 ? "H" : "T";
+    const n1 = $("in-team1").value.trim()||"Team 1";
+    const n2 = $("in-team2").value.trim()||"Team 2";
+    $("toss-result").innerHTML = "🪙 It's <strong>" + (flip===0 ? "Heads" : "Tails") + "</strong>! "
+      + esc(n1) + " called " + (call===0 ? "heads" : "tails")
+      + " — <strong>" + esc(winner===0 ? n1 : n2) + "</strong> starts!";
+    tossStarter = winner;
+    $("btn-start").disabled = false;
+    $("btn-heads").disabled = $("btn-tails").disabled = false;
+  };
+  if (reducedMotion()){ done(); return; }
+  coin.classList.add("flipping");
+  sfx.open();
+  setTimeout(done, 1750);
+}
+$("btn-heads").addEventListener("click", ()=> callToss(0));
+$("btn-tails").addEventListener("click", ()=> callToss(1));
+twoTap($("btn-cleardata"), "tap again to clear", ()=>{
+  clearSave(); localStorage.removeItem(PREFS_KEY); location.reload();
+});
+$("btn-pick1").addEventListener("click", ()=> setStarter(0,true));
+$("btn-pick2").addEventListener("click", ()=> setStarter(1,true));
+
+/* keep the picker & virtual-toss buttons labelled with the real team names */
+function refreshPickLabels(){
+  const n1 = $("in-team1").value.trim()||"Team 1";
+  const n2 = $("in-team2").value.trim()||"Team 2";
+  $("btn-pick1").textContent = n1 + " starts";
+  $("btn-pick2").textContent = n2 + " starts";
+  $("btn-heads").textContent = n1 + " calls Heads";
+  $("btn-tails").textContent = n1 + " calls Tails";
+}
+$("in-team1").addEventListener("input", refreshPickLabels);
+$("in-team2").addEventListener("input", refreshPickLabels);
+refreshPickLabels();
+
+$("btn-start").addEventListener("click", ()=>{
+  const n1 = $("in-team1").value.trim()||"Team 1";
+  const n2 = $("in-team2").value.trim()||"Team 2";
+  state = freshState([n1,n2], tossStarter ?? 0, $("in-mystery").checked);
+  save();
+  showScreen("board");
+  renderBoard();
+});
+
+/* ================================================================
+   BOARD RENDER
+   ================================================================ */
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function teamDone(t){ return state.teams[t].resolved >= QUESTIONS_PER_TEAM; }
+function pendingBoxFor(t){
+  return Object.keys(state.boxes).find(id => state.boxes[id].status==="pending" && state.boxes[id].pendingTeam===t) || null;
+}
+function mustAnswerPending(t){
+  return state.teams[t].opened >= QUESTIONS_PER_TEAM && !!pendingBoxFor(t);
+}
+
+function renderBoard(){
+  // team cards
+  [0,1].forEach(t=>{
+    const tm = state.teams[t], card = $("tc-"+t);
+    card.classList.toggle("active", state.currentTeam===t && state.phase==="board");
+    card.querySelector(".tname").textContent = tm.name;
+    card.querySelector(".tscore").textContent = tm.score;
+    const meta = card.querySelector(".tmeta");
+    meta.innerHTML = "";
+    meta.appendChild(badge("Questions "+tm.resolved+"/"+QUESTIONS_PER_TEAM, ""));
+    meta.appendChild(badge(tm.lifelineUsed ? "Lifeline used" : "Lifeline ✓", tm.lifelineUsed ? "off" : "ok"));
+    if (state.mysteryEnabled && tm.mysteryGot) meta.appendChild(badge("🎁 Mystery claimed","gift"));
+    if (tm.extraHints>0) meta.appendChild(badge("🎁 Extra hint ×"+tm.extraHints,"gift"));
+    if (pendingBoxFor(t)) meta.appendChild(badge("⏳ Pending: "+pendingBoxFor(t).replace(/([AB])$/," $1"),"gift"));
+  });
+
+  // score-pop animation for the last awarded points
+  if (lastAward){
+    const card = $("tc-"+lastAward.team);
+    const sc = card.querySelector(".tscore");
+    sc.classList.add("pop");
+    const f = document.createElement("span");
+    f.className = "float-pts";
+    f.textContent = "+"+lastAward.pts;
+    card.appendChild(f);
+    setTimeout(()=>{ sc.classList.remove("pop"); f.remove(); }, 1500);
+    lastAward = null;
+  }
+
+  // turn banner
+  const cur = state.currentTeam, tm = state.teams[cur];
+  let msg;
+  if (mustAnswerPending(cur)){
+    msg = '<span class="who">'+esc(tm.name)+'</span> — answer your pending question (tap the striped box).';
+  } else {
+    msg = '<span class="who">'+esc(tm.name)+'</span> — pick a box! ('+(QUESTIONS_PER_TEAM - tm.opened)+' pick'+((QUESTIONS_PER_TEAM-tm.opened)===1?"":"s")+' left)';
+  }
+  $("turn-banner").innerHTML = msg;
+
+  // grid
+  const grid = $("board-grid");
+  grid.innerHTML = "";
+  QUESTION_BANK.boxes.forEach(def=>{
+    const bs = state.boxes[def.id];
+    const btn = document.createElement("button");
+    btn.className = "tile";
+    btn.setAttribute("role","gridcell");
+    const letter = def.id.slice(-1);
+    if (bs.status==="used"){
+      btn.classList.add("used");
+      btn.disabled = true;
+      btn.innerHTML = '<span class="val">'+(bs.gotIt ? "✔" : "✘")+'</span><span class="ltr">'+esc(state.teams[bs.usedBy].name)+'</span>';
+      btn.setAttribute("aria-label", def.points+" "+letter+" — answered");
+    } else if (bs.status==="pending"){
+      btn.classList.add("pending");
+      const mine = bs.pendingTeam===state.currentTeam && mustAnswerPending(state.currentTeam);
+      btn.disabled = !mine;
+      btn.innerHTML = '<span class="val">⏳ '+def.points+'</span><span class="ltr">'+esc(state.teams[bs.pendingTeam].name)+'</span>';
+      btn.setAttribute("aria-label", def.points+" "+letter+" — pending for "+state.teams[bs.pendingTeam].name);
+      if (mine) btn.addEventListener("click", ()=> openQuestion(def.id, true));
+    } else {
+      btn.innerHTML = '<span class="val">'+def.points+'</span><span class="ltr">BOX '+letter+'</span>';
+      btn.setAttribute("aria-label", "Open box "+def.points+" "+letter);
+      // board locked while current team must answer its pending question
+      btn.disabled = mustAnswerPending(state.currentTeam) || state.teams[state.currentTeam].opened >= QUESTIONS_PER_TEAM;
+      btn.addEventListener("click", ()=> openQuestion(def.id, false));
+    }
+    grid.appendChild(btn);
+  });
+  $("btn-undo").disabled = state.history.length===0;
+}
+function badge(text, cls){
+  const s = document.createElement("span");
+  s.className = "badge"+(cls?" "+cls:"");
+  s.textContent = text;
+  return s;
+}
+
+/* ================================================================
+   UNDO — snapshot taken when a box is opened / before manual changes
+   ================================================================ */
+function pushHistory(){
+  const snap = JSON.parse(JSON.stringify(Object.assign({}, state, {history:[], active:null})));
+  state.history.push(snap);
+  if (state.history.length>10) state.history.shift();
+}
+$("btn-undo").addEventListener("click", ()=>{
+  if (!state.history.length) return;
+  stopTimer();
+  const snap = state.history.pop();
+  const keepHistory = state.history;
+  state = snap;
+  state.history = keepHistory;
+  $("q-overlay").classList.add("hidden");
+  save();
+  showScreen(state.phase==="board" ? "board" : state.phase);
+  renderBoard();
+});
+
+/* ================================================================
+   QUESTION FLOW
+   ================================================================ */
+function openQuestion(boxId, isPending){
+  if (state.active) return; // one at a time
+  pushHistory();
+  const def = boxDef(boxId);
+  const team = state.currentTeam;
+  const bs = state.boxes[boxId];
+
+  if (!isPending){
+    state.teams[team].opened++;
+  } else {
+    bs.status = "unopened_pending_run"; // transient: being answered now
+  }
+
+  state.active = {
+    boxId, team, isPending: !!isPending,
+    timeLeft: TIMER_BY_VALUE[def.points],
+    running: false, revealed: false, resolved: false,
+    submitted: null, perk: null, retryUsed: false,
+    hintShown: false, timeUp: false, awaitSwap: false
+  };
+
+  // Mystery reward?
+  if (!isPending && state.mysteryEnabled && state.mysteryBoxes.includes(boxId) && !state.teams[team].mysteryGot){
+    state.mysteryBoxes = state.mysteryBoxes.filter(b=>b!==boxId);
+    state.teams[team].mysteryGot = true;
+    const perks = ["time","hint","retry","points","swap"];
+    const perk = perks[Math.floor(Math.random()*perks.length)];
+    state.active.perk = perk;
+    sfx.gift();
+    if (perk==="time")   state.active.timeLeft += 20;
+    if (perk==="points") state.teams[team].score += 50;
+    if (perk==="hint")   state.teams[team].extraHints += 1;
+    if (perk==="swap")   state.active.awaitSwap = true;
+  } else {
+    sfx.open();
+  }
+
+  save();
+  renderQuestion();
+  if (!state.active.awaitSwap) startTimer();
+}
+
+function perkNote(p){
+  switch(p){
+    case "time":   return "🎁 Mystery Reward: +20 seconds added to this question!";
+    case "hint":   return "🎁 Mystery Reward: a free extra hint (button below — doesn't use your lifeline).";
+    case "retry":  return "🎁 Mystery Reward: one second attempt if your first answer is wrong!";
+    case "points": return "🎁 Mystery Reward: 50 points added to your score!";
+    case "swap":   return null; // handled by the swap panel
+  }
+  return null;
+}
+
+function renderQuestion(){
+  const a = state.active; if (!a) return;
+  const def = boxDef(a.boxId);
+  const tm = state.teams[a.team];
+
+  $("q-value").textContent = def.points + " points" + (a.isPending ? " · returned question" : "");
+  $("q-team").textContent = tm.name + "'s question";
+
+  const swapping = a.awaitSwap;
+  $("q-swap").classList.toggle("hidden", !swapping);
+  $("q-main").classList.toggle("hidden", swapping);
+
+  const note = perkNote(a.perk);
+  $("q-gift-note").classList.toggle("hidden", !note);
+  if (note) $("q-gift-note").textContent = note;
+
+  $("q-text").textContent = def.question;
+  $("q-timeup").classList.toggle("hidden", !a.timeUp);
+  $("q-hint").classList.toggle("hidden", !a.hintShown);
+  $("q-retry").classList.add("hidden");
+  $("q-answer-in").value = a.submitted || "";
+  $("q-submitted").classList.toggle("hidden", !a.submitted);
+  if (a.submitted) $("q-submitted").textContent = "Team answered: “"+a.submitted+"”";
+
+  $("q-reveal").classList.toggle("hidden", !a.revealed);
+  $("q-reveal-a").textContent = def.answer;
+  $("q-reveal-e").textContent = def.explanation || "";
+  $("q-result").classList.add("hidden");
+  $("q-judge").classList.remove("hidden");
+  $("q-continue-row").classList.add("hidden");
+
+  // lifelines: one per team per game; not usable on a returned (skipped) question
+  const canLL = !tm.lifelineUsed && !a.isPending && !a.resolved;
+  ["ll-time","ll-hint","ll-first","ll-skip"].forEach(id=> $(id).disabled = !canLL);
+  $("ll-gift-hint").classList.toggle("hidden", !(tm.extraHints>0 && !a.hintShown && !a.resolved));
+  $("q-lifelines").classList.toggle("hidden", a.resolved);
+
+  updateTimerDisplay();
+  $("q-overlay").classList.remove("hidden");
+  $("btn-pause").textContent = a.running ? "⏸ Pause" : "▶ Resume";
+}
+
+function startTimer(){
+  const a = state.active; if (!a || a.resolved) return;
+  a.running = true;
+  $("btn-pause").textContent = "⏸ Pause";
+  stopInterval();
+  timerInterval = setInterval(()=>{
+    if (!state.active || !state.active.running) return;
+    state.active.timeLeft--;
+    if (state.active.timeLeft <= 10 && state.active.timeLeft > 0) sfx.tick();
+    if (state.active.timeLeft <= 0){
+      state.active.timeLeft = 0;
+      state.active.running = false;
+      state.active.timeUp = true;
+      sfx.timeup();
+      $("q-timeup").classList.remove("hidden");
+      $("btn-pause").textContent = "▶ Resume";
+      stopInterval();
+    }
+    updateTimerDisplay();
+    save();
+  }, 1000);
+}
+function stopInterval(){ if (timerInterval){ clearInterval(timerInterval); timerInterval=null; } }
+function stopTimer(){ stopInterval(); if (state && state.active) state.active.running = false; }
+
+function updateTimerDisplay(){
+  const a = state.active; if (!a) return;
+  const total = TIMER_BY_VALUE[boxDef(a.boxId).points] + (a.perk==="time"?20:0) + 1000; // bar uses live max below
+  const m = Math.floor(a.timeLeft/60), s = a.timeLeft%60;
+  const el = $("q-time");
+  el.textContent = m+":"+String(s).padStart(2,"0");
+  el.classList.toggle("low", a.timeLeft<=10);
+  const max = a.barMax || (a.barMax = a.timeLeft>0 ? Math.max(a.timeLeft, TIMER_BY_VALUE[boxDef(a.boxId).points]) : TIMER_BY_VALUE[boxDef(a.boxId).points]);
+  const bar = $("q-bar");
+  bar.style.width = Math.max(0, Math.min(100, (a.timeLeft/max)*100)) + "%";
+  bar.classList.toggle("low", a.timeLeft<=10);
+}
+
+/* ---- host judgement buttons ---- */
+$("btn-pause").addEventListener("click", ()=>{
+  const a = state.active; if (!a || a.resolved || a.timeLeft<=0) return;
+  if (a.running){ stopTimer(); $("btn-pause").textContent = "▶ Resume"; }
+  else startTimer();
+  save();
+});
+$("btn-plus10").addEventListener("click", ()=> nudgeTime(10));
+$("btn-minus10").addEventListener("click", ()=> nudgeTime(-10));
+function nudgeTime(d){
+  const a = state.active; if (!a || a.resolved) return;
+  a.timeLeft = Math.max(0, a.timeLeft + d);
+  if (a.timeLeft>0 && a.timeUp){ a.timeUp=false; $("q-timeup").classList.add("hidden"); }
+  updateTimerDisplay(); save();
+}
+/* Auto-check the typed answer against answer + acceptedAnswers.
+   Purely advisory — the host still marks correct/wrong manually. */
+function normalizeAnswer(s){
+  return String(s).toLowerCase().replace(/[^a-z0-9äöüß ]+/g," ").replace(/\s+/g," ").trim();
+}
+function answerMatches(def, typed){
+  const pool = [def.answer].concat(def.acceptedAnswers || []);
+  const t = normalizeAnswer(typed);
+  return t.length>0 && pool.some(x => normalizeAnswer(x) === t);
+}
+$("btn-submit").addEventListener("click", ()=>{
+  const a = state.active; if (!a || a.resolved) return;
+  const v = $("q-answer-in").value.trim();
+  if (!v) return;
+  a.submitted = v;
+  stopTimer(); $("btn-pause").textContent = "▶ Resume";
+  const ok = answerMatches(boxDef(a.boxId), v);
+  $("q-submitted").textContent = "Team answered: “"+v+"” — "
+    + (ok ? "✔ matches a stored answer" : "✘ no exact match — host decides");
+  $("q-submitted").style.color = ok ? "var(--good)" : "var(--warn)";
+  $("q-submitted").classList.remove("hidden");
+  save();
+});
+$("btn-revealbtn").addEventListener("click", ()=> revealAnswer());
+function revealAnswer(){
+  const a = state.active; if (!a || a.revealed) return;
+  a.revealed = true;
+  stopTimer(); $("btn-pause").textContent = "▶ Resume";
+  $("q-reveal").classList.remove("hidden");
+  save();
+}
+$("btn-correct").addEventListener("click", ()=> judge(true));
+$("btn-wrong").addEventListener("click", ()=> judge(false));
+
+function judge(correct){
+  const a = state.active; if (!a || a.resolved) return;
+
+  // mystery second attempt
+  if (!correct && a.perk==="retry" && !a.retryUsed){
+    a.retryUsed = true;
+    a.timeLeft = 20; a.timeUp = false; a.barMax = 20;
+    $("q-timeup").classList.add("hidden");
+    $("q-retry").classList.remove("hidden");
+    sfx.gift();
+    startTimer(); updateTimerDisplay(); save();
+    return;
+  }
+
+  a.resolved = true;
+  stopTimer();
+  const def = boxDef(a.boxId);
+  const tm = state.teams[a.team];
+  if (correct){ tm.score += def.points; sfx.correct(); lastAward = { team:a.team, pts:def.points }; }
+  else { sfx.wrong(); }
+  tm.resolved++;
+
+  const bs = state.boxes[a.boxId];
+  bs.status = "used"; bs.usedBy = a.team; bs.gotIt = correct; bs.pendingTeam = null;
+
+  a.revealed = true;
+  $("q-reveal").classList.remove("hidden");
+  $("q-result").textContent = correct
+    ? "✔ Correct — "+tm.name+" wins "+def.points+" points!"
+    : "✘ Wrong — no points this time. No steals, next team's turn.";
+  $("q-result").classList.remove("hidden");
+  $("q-result").style.color = correct ? "var(--good)" : "var(--bad)";
+  $("q-judge").classList.add("hidden");
+  $("q-lifelines").classList.add("hidden");
+  $("q-continue-row").classList.remove("hidden");
+  $("btn-continue").focus();
+  save();
+}
+
+$("btn-continue").addEventListener("click", ()=>{
+  state.active = null;
+  $("q-overlay").classList.add("hidden");
+  advanceTurn();
+});
+
+function advanceTurn(){
+  if (teamDone(0) && teamDone(1)){ endGame(); return; }
+  const other = 1 - state.currentTeam;
+  if (!teamDone(other)) state.currentTeam = other;
+  // else same team keeps going until finished
+  save();
+  renderBoard();
+}
+
+/* ---- lifelines ---- */
+$("ll-time").addEventListener("click", ()=> useLifeline("time"));
+$("ll-hint").addEventListener("click", ()=> useLifeline("hint"));
+$("ll-first").addEventListener("click", ()=> useLifeline("first"));
+$("ll-skip").addEventListener("click", ()=> useLifeline("skip"));
+$("ll-gift-hint").addEventListener("click", ()=>{
+  const a = state.active; if (!a || a.resolved) return;
+  const tm = state.teams[a.team];
+  if (tm.extraHints<=0) return;
+  tm.extraHints--;
+  showHint("🎁 Mystery hint: " + boxDef(a.boxId).hint);
+});
+
+function useLifeline(kind){
+  const a = state.active; if (!a || a.resolved || a.isPending) return;
+  const tm = state.teams[a.team];
+  if (tm.lifelineUsed) return;
+  tm.lifelineUsed = true;
+  const def = boxDef(a.boxId);
+  if (kind==="time"){
+    a.timeLeft += 30;
+    if (a.timeUp){ a.timeUp=false; $("q-timeup").classList.add("hidden"); startTimer(); }
+    updateTimerDisplay();
+  }
+  if (kind==="hint")  showHint("💡 Hint: " + def.hint);
+  if (kind==="first") showHint("🔤 The answer starts with “" + (def.firstLetter || def.answer.replace(/^["“]/,"").charAt(0).toUpperCase()) + "”");
+  if (kind==="skip"){
+    // question goes to the pending area; same team answers it after its other questions
+    stopTimer();
+    state.boxes[a.boxId].status = "pending";
+    state.boxes[a.boxId].pendingTeam = a.team;
+    state.active = null;
+    $("q-overlay").classList.add("hidden");
+    // same team's turn ends for now — normal alternation continues
+    const other = 1 - state.currentTeam;
+    if (!teamDone(other)) state.currentTeam = other;
+    save();
+    renderBoard();
+    return;
+  }
+  ["ll-time","ll-hint","ll-first","ll-skip"].forEach(id=> $(id).disabled = true);
+  save();
+}
+function showHint(text){
+  const a = state.active; if(!a) return;
+  a.hintShown = true;
+  $("q-hint").textContent = text;
+  $("q-hint").classList.remove("hidden");
+  save();
+}
+
+/* ---- mystery swap decision ---- */
+$("btn-swap-keep").addEventListener("click", ()=>{
+  const a = state.active; if (!a) return;
+  a.awaitSwap = false;
+  a.perk = "kept"; // reward consumed by choosing to keep? No — keeping means no perk beyond the choice itself.
+  $("q-gift-note").classList.add("hidden");
+  renderQuestion();
+  startTimer();
+  save();
+});
+$("btn-swap-go").addEventListener("click", ()=>{
+  const a = state.active; if (!a) return;
+  // put the box back, un-count the pick, let the same team choose again
+  state.boxes[a.boxId].status = "unopened";
+  state.teams[a.team].opened--;
+  state.active = null;
+  // remove the snapshot made when this box was opened (nothing to undo)
+  state.history.pop();
+  $("q-overlay").classList.add("hidden");
+  save();
+  renderBoard();
+});
+
+/* ================================================================
+   END GAME / RESULTS / TIE-BREAKER
+   ================================================================ */
+function endGame(){
+  stopTimer();
+  state.active = null;
+  state.phase = "results";
+  save();
+  $("q-overlay").classList.add("hidden");
+  showScreen("results");
+  renderResults();
+}
+function renderResults(){
+  if (state.tiebreakWinner != null){ tbWin(state.tiebreakWinner); return; }
+  const [t1,t2] = state.teams;
+  const tie = t1.score === t2.score;
+  const winner = t1.score > t2.score ? 0 : 1;
+  $("final-title").innerHTML = tie
+    ? "🤝 It's a tie! " + t1.score + " points each."
+    : '🏆 <span class="who">'+esc(state.teams[winner].name)+"</span> wins!";
+  const fs = $("final-scores");
+  fs.innerHTML = "";
+  [0,1].forEach(t=>{
+    const d = document.createElement("div");
+    d.className = "fscore" + (!tie && t===winner ? " winner":"");
+    d.innerHTML = '<div class="n">'+esc(state.teams[t].name)+'</div><div class="s">'+state.teams[t].score+"</div>";
+    fs.appendChild(d);
+  });
+  $("btn-tiebreak").classList.toggle("hidden", !tie);
+  if (!tie) confetti();
+  else sfx.open();
+  if (!tie) sfx.correct();
+}
+$("btn-tiebreak").addEventListener("click", ()=>{
+  state.phase = "tiebreak";
+  save();
+  showScreen("tiebreak");
+  $("tb-q").value = QUESTION_BANK.tiebreaker.question;
+  $("tb-a").value = QUESTION_BANK.tiebreaker.answer;
+  $("tb-edit").classList.remove("hidden");
+  $("tb-live").classList.add("hidden");
+  $("btn-tb-t1").textContent = "✔ " + state.teams[0].name + " correct";
+  $("btn-tb-t2").textContent = "✔ " + state.teams[1].name + " correct";
+});
+$("btn-tb-show").addEventListener("click", ()=>{
+  $("tb-question-display").textContent = $("tb-q").value.trim() || QUESTION_BANK.tiebreaker.question;
+  $("tb-answer-display").textContent = "Answer: " + ($("tb-a").value.trim() || QUESTION_BANK.tiebreaker.answer);
+  $("tb-answer-display").classList.add("hidden");
+  $("tb-edit").classList.add("hidden");
+  $("tb-live").classList.remove("hidden");
+  sfx.open();
+});
+$("btn-tb-reveal").addEventListener("click", ()=> $("tb-answer-display").classList.remove("hidden"));
+$("btn-tb-t1").addEventListener("click", ()=> tbWin(0));
+$("btn-tb-t2").addEventListener("click", ()=> tbWin(1));
+$("btn-tb-again").addEventListener("click", ()=>{
+  $("tb-q").value = ""; $("tb-a").value = "";
+  $("tb-edit").classList.remove("hidden");
+  $("tb-live").classList.add("hidden");
+  $("tb-q").focus();
+});
+function tbWin(t){
+  state.phase = "results";
+  state.tiebreakWinner = t;
+  save();
+  showScreen("results");
+  $("final-title").innerHTML = '🏆 <span class="who">'+esc(state.teams[t].name)+"</span> wins on the tie-breaker!";
+  const fs = $("final-scores");
+  fs.innerHTML = "";
+  [0,1].forEach(x=>{
+    const d = document.createElement("div");
+    d.className = "fscore" + (x===t ? " winner":"");
+    d.innerHTML = '<div class="n">'+esc(state.teams[x].name)+'</div><div class="s">'+state.teams[x].score+"</div>";
+    fs.appendChild(d);
+  });
+  $("btn-tiebreak").classList.add("hidden");
+  sfx.correct();
+  confetti();
+}
+
+$("btn-rematch").addEventListener("click", ()=>{
+  const names = state.teams.map(t=>t.name);
+  const mystery = state.mysteryEnabled;
+  state = freshState(names, Math.random()<0.5?0:1, mystery);
+  save();
+  showScreen("board");
+  renderBoard();
+});
+$("btn-newgame").addEventListener("click", ()=>{
+  clearSave();
+  state = null;
+  $("btn-start").disabled = true;
+  $("toss-result").textContent = "Waiting for the coin toss…";
+  showScreen("setup");
+});
+
+/* confetti — gentle drift, no flashing; skipped for reduced motion */
+function confetti(){
+  if (reducedMotion()) return;
+  const colors = ["#ffd24a","#5b8cff","#3ddc84","#ff8ab0","#a78bfa"];
+  for (let i=0;i<110;i++){
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random()*100 + "vw";
+    c.style.width = (6+Math.random()*6)+"px";
+    c.style.height = (8+Math.random()*8)+"px";
+    c.style.background = colors[i%colors.length];
+    c.style.animationDuration = (2.6+Math.random()*2.4)+"s";
+    c.style.animationDelay = (Math.random()*0.9)+"s";
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(), 6500);
+  }
+}
+
+/* ================================================================
+   TOP BAR: sound, theme, adjust, end game, reset (two-tap confirms)
+   ================================================================ */
+$("btn-sound").addEventListener("click", ()=>{ prefs.sound = !prefs.sound; savePrefs(); applyPrefs(); });
+$("btn-theme").addEventListener("click", ()=>{ prefs.theme = prefs.theme==="dark"?"light":"dark"; savePrefs(); applyPrefs(); });
+
+function twoTap(btn, armedLabel, action){
+  let timer = null;
+  btn.addEventListener("click", ()=>{
+    if (btn.dataset.armed){
+      clearTimeout(timer);
+      delete btn.dataset.armed;
+      btn.classList.remove("danger-armed");
+      btn.textContent = btn.dataset.label;
+      action();
+    } else {
+      btn.dataset.label = btn.textContent;
+      btn.dataset.armed = "1";
+      btn.classList.add("danger-armed");
+      btn.textContent = armedLabel;
+      timer = setTimeout(()=>{
+        delete btn.dataset.armed;
+        btn.classList.remove("danger-armed");
+        btn.textContent = btn.dataset.label;
+      }, 3500);
+    }
+  });
+}
+twoTap($("btn-endgame"), "Tap again to end game", ()=> endGame());
+twoTap($("btn-reset"), "Tap again to reset", ()=>{
+  stopTimer(); clearSave(); state = null;
+  $("q-overlay").classList.add("hidden");
+  $("btn-start").disabled = true;
+  $("toss-result").textContent = "Waiting for the coin toss…";
+  showScreen("setup");
+});
+
+/* manual score adjust modal */
+$("btn-adjust").addEventListener("click", ()=>{
+  openModal("Adjust scores", "Set the exact score for each team.", (extra)=>{
+    extra.innerHTML = '<div class="adjust-grid">'
+      + '<div><label for="adj-0">'+esc(state.teams[0].name)+'</label><input type="number" id="adj-0" step="10" value="'+state.teams[0].score+'"></div>'
+      + '<div><label for="adj-1">'+esc(state.teams[1].name)+'</label><input type="number" id="adj-1" step="10" value="'+state.teams[1].score+'"></div>'
+      + '</div>';
+  }, [
+    { label:"Apply", cls:"btn-primary", fn:()=>{
+        pushHistory();
+        state.teams[0].score = Math.max(0, parseInt($("adj-0").value)||0);
+        state.teams[1].score = Math.max(0, parseInt($("adj-1").value)||0);
+        save(); renderBoard(); closeModal();
+      } },
+    { label:"Cancel", cls:"btn-ghost", fn:closeModal }
+  ]);
+});
+
+/* ================================================================
+   GENERIC MODAL
+   ================================================================ */
+function openModal(title, body, extraFn, actions){
+  $("modal-title").textContent = title;
+  $("modal-body").textContent = body;
+  const extra = $("modal-extra"); extra.innerHTML = "";
+  if (extraFn) extraFn(extra);
+  const act = $("modal-actions"); act.innerHTML = "";
+  actions.forEach(a=>{
+    const b = document.createElement("button");
+    b.className = "btn "+a.cls;
+    b.textContent = a.label;
+    b.addEventListener("click", a.fn);
+    act.appendChild(b);
+  });
+  $("modal").classList.remove("hidden");
+  const first = act.querySelector("button"); if (first) first.focus();
+}
+function closeModal(){ $("modal").classList.add("hidden"); }
+
+/* ================================================================
+   KEYBOARD SHORTCUTS (disabled while typing)
+   ================================================================ */
+document.addEventListener("keydown", (e)=>{
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag==="INPUT" || tag==="TEXTAREA" || tag==="SELECT") return;
+  if (!$("modal").classList.contains("hidden")){
+    if (e.key==="Escape") closeModal();
+    return;
+  }
+  const qOpen = !$("q-overlay").classList.contains("hidden") && state && state.active && !state.active.awaitSwap;
+  if (!qOpen) return;
+  const a = state.active;
+  switch(e.key){
+    case " ": e.preventDefault(); $("btn-pause").click(); break;
+    case "c": case "C": if (!a.resolved) judge(true); else $("btn-continue").click(); break;
+    case "w": case "W": if (!a.resolved) judge(false); break;
+    case "r": case "R": revealAnswer(); break;
+    case "h": case "H": if (!$("ll-hint").disabled) useLifeline("hint"); break;
+    case "e": case "E": if (!$("ll-time").disabled) useLifeline("time"); break;
+    case "Escape": /* no accidental closes during a live question */ break;
+  }
+});
+
+/* ================================================================
+   BOOT — offer to continue a saved game
+   ================================================================ */
+loadPrefs();
+const saved = loadSave();
+if (saved && saved.phase && saved.teams){
+  openModal("Continue saved game?",
+    saved.teams[0].name+" ("+saved.teams[0].score+") vs "+saved.teams[1].name+" ("+saved.teams[1].score+") — a game in progress was found.",
+    null,
+    [
+      { label:"▶ Continue", cls:"btn-primary", fn:()=>{
+          closeModal();
+          state = saved;
+          if (state.active){ state.active.running = false; } // resume paused
+          showScreen(state.phase==="tiebreak" ? "tiebreak" : (state.phase==="results" ? "results" : "board"));
+          if (state.phase==="board"){ renderBoard(); if (state.active){ // reopen mid-question, paused
+              // restore transient pending-run flag safely
+              renderQuestion(); $("btn-pause").textContent = "▶ Resume";
+            } }
+          else if (state.phase==="results") renderResults();
+          else if (state.phase==="tiebreak") $("btn-tiebreak").click();
+        } },
+      { label:"Start new game", cls:"btn-ghost", fn:()=>{ clearSave(); closeModal(); showScreen("setup"); } },
+      { label:"Clear saved data", cls:"btn-bad", fn:()=>{ clearSave(); localStorage.removeItem(PREFS_KEY); closeModal(); showScreen("setup"); } }
+    ]);
+} else {
+  showScreen("setup");
+}
+</script>
+</body>
+</html>
