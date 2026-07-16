@@ -26,6 +26,27 @@ above and project it on a big screen.
 - Auto-save to localStorage — refreshing mid-game offers Continue / New Game
 - Dark/light theme, sound toggle, keyboard shortcuts, ARIA labels, reduced-motion support
 
+## Practice Mode
+
+Tap **🎭 Try mock game** on the setup screen to rehearse before the real quiz.
+Practice mode uses six easy non-biblical demo questions (100/200/300 points,
+three per team), short timers (10/15/20 seconds), sample teams *Demo Team A*
+and *Demo Team B*, and its own demo tie-breaker. A striped **PRACTICE MODE**
+banner stays visible the whole time, with an **Exit practice** button that
+returns to the setup screen. Every host control works exactly like the real
+game — lifelines, Skip & Return, undo, score adjust, tie-breaker — but nothing
+is saved: your real saved game, custom questions, and settings are untouched.
+
+## Tests
+
+Automated Playwright tests cover practice mode and real-game regressions:
+
+```bash
+npm install
+npx playwright install chromium
+npm test
+```
+
 ## Edit the questions
 
 Open `index.html` and find the clearly marked `QUESTION_BANK` at the top of the

@@ -1,0 +1,12 @@
+{
+  "name": "church-game-night",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright tests for the Two-Team Box Quiz (single-file game in index.html)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0"
+  }
+}

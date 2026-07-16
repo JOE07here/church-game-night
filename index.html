@@ -46,6 +46,18 @@
     border:2px solid var(--border); border-radius:10px; padding:10px 12px;}
   .hidden{display:none !important;}
 
+  /* ============ PRACTICE MODE BANNER ============ */
+  #practice-banner{position:fixed; top:0; left:0; right:0; z-index:70;
+    display:flex; gap:14px; align-items:center; justify-content:center; flex-wrap:wrap;
+    padding:9px 14px; text-align:center;
+    background:repeating-linear-gradient(45deg,#7a5b00,#7a5b00 16px,#8f6b00 16px,#8f6b00 32px);
+    color:#fff; font-weight:900; letter-spacing:.05em; font-size:.95rem;
+    box-shadow:0 4px 14px rgba(0,0,0,.35);}
+  #practice-banner button{background:#fff; color:#5a4300; border:none;
+    padding:6px 14px; border-radius:999px; font-weight:800; font-size:.85rem;}
+  #practice-banner button:focus-visible{outline:3px solid #fff; outline-offset:2px;}
+  body.practice{padding-top:64px;}
+
   /* ============ TOP BAR ============ */
   .topbar{max-width:1200px; margin:0 auto 14px; display:flex; align-items:center;
     justify-content:space-between; gap:10px; flex-wrap:wrap;}
@@ -146,6 +158,7 @@
     margin-bottom:14px; min-height:1.6em;}
   #turn-banner .who{color:var(--accent);}
   .grid{display:grid; grid-template-columns:repeat(5,1fr); gap:12px;}
+  .grid.demo{grid-template-columns:repeat(3,1fr); max-width:760px; margin:0 auto;}
   @media(max-width:720px){ .grid{grid-template-columns:repeat(2,1fr);} .scorebar{grid-template-columns:1fr; } .vs{display:none;} }
   .tile{background:var(--tile-grad); color:#fff; border:2px solid var(--border);
     border-radius:14px; aspect-ratio:5/3; display:flex; flex-direction:column;
@@ -251,6 +264,11 @@
 </head>
 <body>
 
+<div id="practice-banner" class="hidden" role="status" aria-live="polite">
+  <span>🎭 PRACTICE MODE — demo questions, nothing is saved</span>
+  <button id="btn-exit-practice" aria-label="Exit practice mode and return to setup">Exit practice</button>
+</div>
+
 <header class="topbar">
   <h1>📦 Two-Team <span>Box Quiz</span></h1>
   <div class="top-actions">
@@ -310,6 +328,7 @@
       </details>
       <div class="btn-row" style="margin-top:14px;">
         <button id="btn-start" class="btn btn-primary">▶ Start game</button>
+        <button id="btn-demo" class="btn btn-ghost">🎭 Try mock game</button>
       </div>
       <div class="btn-row" style="margin-top:10px;">
         <button class="linklike" id="btn-edit-questions">✏️ edit questions (admin)</button>
@@ -650,8 +669,66 @@ const DEFAULT_QUESTION_BANK = {
   }
 };
 
+/* ================================================================
+   DEMO QUESTION BANK — used only by "🎭 Try mock game" (practice
+   mode). Six easy, non-biblical questions so hosts and players can
+   rehearse the controls without seeing any real questions.
+   ================================================================ */
+const DEMO_QUESTION_BANK = {
+  boxes: [
+    { id:"100A", points:100,
+      question:"What colour do you get when you mix blue and yellow?",
+      answer:"Green",
+      acceptedAnswers:[],
+      hint:"It's the colour of grass.",
+      firstLetter:"G",
+      explanation:"Blue and yellow paint mix to make green." },
+    { id:"100B", points:100,
+      question:"How many legs does a spider have?",
+      answer:"Eight",
+      acceptedAnswers:["8"],
+      hint:"One more pair than an insect.",
+      firstLetter:"E",
+      explanation:"Spiders are arachnids — they have eight legs." },
+    { id:"200A", points:200,
+      question:"What is the capital city of France?",
+      answer:"Paris",
+      acceptedAnswers:[],
+      hint:"The Eiffel Tower is there.",
+      firstLetter:"P",
+      explanation:"Paris has been France's capital for centuries." },
+    { id:"200B", points:200,
+      question:"How many minutes are in one hour?",
+      answer:"Sixty",
+      acceptedAnswers:["60"],
+      hint:"Count the small marks around a clock face.",
+      firstLetter:"S",
+      explanation:"60 minutes = 1 hour." },
+    { id:"300A", points:300,
+      question:"Which planet is known as the Red Planet?",
+      answer:"Mars",
+      acceptedAnswers:[],
+      hint:"It's named after the Roman god of war.",
+      firstLetter:"M",
+      explanation:"Iron oxide dust gives Mars its red colour." },
+    { id:"300B", points:300,
+      question:"What do bees make from the nectar they collect?",
+      answer:"Honey",
+      acceptedAnswers:[],
+      hint:"It's sweet, golden, and spread on toast.",
+      firstLetter:"H",
+      explanation:"Bees turn nectar into honey and store it in the hive." }
+  ],
+  tiebreaker: {
+    question:"How many days are in a leap year?",
+    answer:"366"
+  }
+};
+
 /* Timer length (seconds) per point value */
 const TIMER_BY_VALUE = { 100:30, 200:40, 300:50, 400:60, 500:75 };
+/* Short timers for practice mode */
+const DEMO_TIMER_BY_VALUE = { 100:10, 200:15, 300:20 };
 const SAVE_KEY = "twoTeamBoxQuiz_v2";       // bumped: v1 saves predate 20-box boards
 const PREFS_KEY = "twoTeamBoxQuiz_prefs";
 const BANK_KEY = "twoTeamBoxQuiz_bank_v1";  // admin-edited questions live here
@@ -678,8 +755,8 @@ let lastAward = null;      // runtime only — drives the score-pop animation
 let prefs = { sound:true, theme:"dark" };
 
 /* Boxes in play: A & B on the 10-box board; A–D on the 20-box board */
-function activeBoxDefs(boardSize){
-  return QUESTION_BANK.boxes.filter(b => boardSize >= 20 || /[AB]$/.test(b.id));
+function activeBoxDefs(boardSize, bank){
+  return (bank || QUESTION_BANK).boxes.filter(b => boardSize >= 20 || /[AB]$/.test(b.id));
 }
 /* Display order: one row per letter, values ascending across the row */
 function sortForDisplay(defs){
@@ -689,16 +766,17 @@ function sortForDisplay(defs){
   });
 }
 
-function freshState(names, starter, mysteryOn, boardSize){
-  const defs = activeBoxDefs(boardSize);
+function freshState(names, starter, mysteryOn, boardSize, isDemo){
+  const defs = activeBoxDefs(boardSize, isDemo ? DEMO_QUESTION_BANK : QUESTION_BANK);
   const boxes = {};
   defs.forEach(b => boxes[b.id] = { status:"unopened", pendingTeam:null, usedBy:null, gotIt:null });
   let mysteryBoxes = [];
-  if (mysteryOn){
+  if (mysteryOn && !isDemo){
     mysteryBoxes = shuffle(defs.map(b=>b.id)).slice(0, boardSize >= 20 ? 4 : 3);
   }
   return {
     phase:"board",
+    isDemo: !!isDemo,
     boardSize,
     perTeam: defs.length/2,               // questions each team must answer
     order: sortForDisplay(defs).map(b=>b.id),
@@ -716,13 +794,18 @@ function freshState(names, starter, mysteryOn, boardSize){
 
 const $ = id => document.getElementById(id);
 function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function boxDef(id){ return QUESTION_BANK.boxes.find(b=>b.id===id); }
+/* Mode helpers: practice mode swaps in the demo bank and short timers */
+function currentBank(){ return (state && state.isDemo) ? DEMO_QUESTION_BANK : QUESTION_BANK; }
+function timerFor(points){ return ((state && state.isDemo) ? DEMO_TIMER_BY_VALUE : TIMER_BY_VALUE)[points]; }
+function lowThreshold(){ return (state && state.isDemo) ? 5 : 10; } // final-seconds warning
+function boxDef(id){ return currentBank().boxes.find(b=>b.id===id); }
 function reducedMotion(){ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
 
 /* ================================================================
    SAVE / LOAD
    ================================================================ */
 function save(){
+  if (state && state.isDemo) return; // practice mode is never persisted
   if (state) localStorage.setItem(SAVE_KEY, JSON.stringify(state));
 }
 function clearSave(){ localStorage.removeItem(SAVE_KEY); }
@@ -776,6 +859,10 @@ function showScreen(name){
   ["scr-setup","scr-board","scr-results","scr-tiebreak"].forEach(s=> $(s).classList.toggle("hidden", s!=="scr-"+name));
   const inGame = (name==="board");
   ["btn-undo","btn-adjust","btn-endgame","btn-reset"].forEach(b=> $(b).classList.toggle("hidden", !inGame));
+  // practice-mode banner follows the state, on every screen
+  const demo = !!(state && state.isDemo);
+  $("practice-banner").classList.toggle("hidden", !demo);
+  document.body.classList.toggle("practice", demo);
 }
 
 /* ================================================================
@@ -820,6 +907,23 @@ function callToss(call){ // call: 0 = heads, 1 = tails
 }
 $("btn-heads").addEventListener("click", ()=> callToss(0));
 $("btn-tails").addEventListener("click", ()=> callToss(1));
+
+/* ================================================================
+   PRACTICE MODE — a mock game with demo questions and short timers.
+   Never persisted, never touches the real save or the question bank.
+   ================================================================ */
+$("btn-demo").addEventListener("click", ()=>{
+  state = freshState(["Demo Team A","Demo Team B"], 0, false, 6, true);
+  showScreen("board");
+  renderBoard();
+});
+$("btn-exit-practice").addEventListener("click", ()=>{
+  stopTimer();
+  state = null;
+  $("q-overlay").classList.add("hidden");
+  resetSetupStarter();
+  showScreen("setup");
+});
 twoTap($("btn-cleardata"), "tap again to clear", ()=>{
   clearSave(); localStorage.removeItem(PREFS_KEY); location.reload();
 });
@@ -968,6 +1072,7 @@ function renderBoard(){
   // grid
   const grid = $("board-grid");
   grid.innerHTML = "";
+  grid.classList.toggle("demo", !!state.isDemo);
   state.order.map(boxDef).forEach(def=>{
     const bs = state.boxes[def.id];
     const btn = document.createElement("button");
@@ -1044,7 +1149,7 @@ function openQuestion(boxId, isPending){
 
   state.active = {
     boxId, team, isPending: !!isPending,
-    timeLeft: TIMER_BY_VALUE[def.points],
+    timeLeft: timerFor(def.points),
     running: false, revealed: false, resolved: false,
     submitted: null, perk: null, retryUsed: false,
     hintShown: false, timeUp: false, awaitSwap: false
@@ -1134,7 +1239,7 @@ function startTimer(){
   timerInterval = setInterval(()=>{
     if (!state.active || !state.active.running) return;
     state.active.timeLeft--;
-    if (state.active.timeLeft <= 10 && state.active.timeLeft > 0) sfx.tick();
+    if (state.active.timeLeft <= lowThreshold() && state.active.timeLeft > 0) sfx.tick();
     if (state.active.timeLeft <= 0){
       state.active.timeLeft = 0;
       state.active.running = false;
@@ -1153,15 +1258,14 @@ function stopTimer(){ stopInterval(); if (state && state.active) state.active.ru
 
 function updateTimerDisplay(){
   const a = state.active; if (!a) return;
-  const total = TIMER_BY_VALUE[boxDef(a.boxId).points] + (a.perk==="time"?20:0) + 1000; // bar uses live max below
   const m = Math.floor(a.timeLeft/60), s = a.timeLeft%60;
   const el = $("q-time");
   el.textContent = m+":"+String(s).padStart(2,"0");
-  el.classList.toggle("low", a.timeLeft<=10);
-  const max = a.barMax || (a.barMax = a.timeLeft>0 ? Math.max(a.timeLeft, TIMER_BY_VALUE[boxDef(a.boxId).points]) : TIMER_BY_VALUE[boxDef(a.boxId).points]);
+  el.classList.toggle("low", a.timeLeft<=lowThreshold());
+  const max = a.barMax || (a.barMax = a.timeLeft>0 ? Math.max(a.timeLeft, timerFor(boxDef(a.boxId).points)) : timerFor(boxDef(a.boxId).points));
   const bar = $("q-bar");
   bar.style.width = Math.max(0, Math.min(100, (a.timeLeft/max)*100)) + "%";
-  bar.classList.toggle("low", a.timeLeft<=10);
+  bar.classList.toggle("low", a.timeLeft<=lowThreshold());
 }
 
 /* ---- host judgement buttons ---- */
@@ -1386,16 +1490,16 @@ $("btn-tiebreak").addEventListener("click", ()=>{
   state.phase = "tiebreak";
   save();
   showScreen("tiebreak");
-  $("tb-q").value = QUESTION_BANK.tiebreaker.question;
-  $("tb-a").value = QUESTION_BANK.tiebreaker.answer;
+  $("tb-q").value = currentBank().tiebreaker.question;
+  $("tb-a").value = currentBank().tiebreaker.answer;
   $("tb-edit").classList.remove("hidden");
   $("tb-live").classList.add("hidden");
   $("btn-tb-t1").textContent = "✔ " + state.teams[0].name + " correct";
   $("btn-tb-t2").textContent = "✔ " + state.teams[1].name + " correct";
 });
 $("btn-tb-show").addEventListener("click", ()=>{
-  $("tb-question-display").textContent = $("tb-q").value.trim() || QUESTION_BANK.tiebreaker.question;
-  $("tb-answer-display").textContent = "Answer: " + ($("tb-a").value.trim() || QUESTION_BANK.tiebreaker.answer);
+  $("tb-question-display").textContent = $("tb-q").value.trim() || currentBank().tiebreaker.question;
+  $("tb-answer-display").textContent = "Answer: " + ($("tb-a").value.trim() || currentBank().tiebreaker.answer);
   $("tb-answer-display").classList.add("hidden");
   $("tb-edit").classList.add("hidden");
   $("tb-live").classList.remove("hidden");
@@ -1433,13 +1537,13 @@ $("btn-rematch").addEventListener("click", ()=>{
   const names = state.teams.map(t=>t.name);
   const mystery = state.mysteryEnabled;
   const boardSize = state.boardSize || 10;
-  state = freshState(names, Math.random()<0.5?0:1, mystery, boardSize);
+  state = freshState(names, Math.random()<0.5?0:1, mystery, boardSize, state.isDemo);
   save();
   showScreen("board");
   renderBoard();
 });
 $("btn-newgame").addEventListener("click", ()=>{
-  clearSave();
+  if (!(state && state.isDemo)) clearSave(); // never touch the real save from practice
   state = null;
   resetSetupStarter();
   showScreen("setup");
@@ -1493,7 +1597,9 @@ function twoTap(btn, armedLabel, action){
 }
 twoTap($("btn-endgame"), "Tap again to end game", ()=> endGame());
 twoTap($("btn-reset"), "Tap again to reset", ()=>{
-  stopTimer(); clearSave(); state = null;
+  stopTimer();
+  if (!(state && state.isDemo)) clearSave(); // never touch the real save from practice
+  state = null;
   $("q-overlay").classList.add("hidden");
   resetSetupStarter();
   showScreen("setup");
