@@ -81,8 +81,15 @@
   .switch input:checked ~ .knob{transform:translateX(24px);}
   .switch input:focus-visible + .track{outline:3px solid var(--accent); outline-offset:2px;}
 
+  /* board size picker */
+  .size-row{display:flex; gap:18px; justify-content:center; flex-wrap:wrap;
+    margin-bottom:20px; font-weight:700; font-size:.95rem;}
+  .size-row label{display:flex; align-items:center; gap:7px; cursor:pointer;}
+  .size-row input{accent-color:var(--accent); width:18px; height:18px;}
+
   /* who-starts picker + optional virtual coin toss */
   .starter-label{font-weight:800; margin-bottom:12px;}
+  .btn.picked{outline:3px solid var(--accent); outline-offset:2px;}
   #toss-result{font-size:1.1rem; font-weight:800; min-height:1.6em; margin:14px 0 6px;}
   #toss-result strong{color:var(--accent);}
   #virtual-toss{margin:10px auto 0; max-width:420px; text-align:center;}
@@ -215,6 +222,19 @@
     animation:cfall linear forwards;}
   @keyframes cfall{ to{transform:translateY(110vh) rotate(720deg); opacity:.6;} }
 
+  /* question editor (admin) */
+  .editor-note{color:var(--muted); font-size:.85rem; margin-bottom:12px;}
+  .editor-box{background:var(--panel2); border:1px solid var(--border); border-radius:12px;
+    padding:12px 14px; margin-bottom:10px;}
+  .editor-box h4{margin-bottom:8px; color:var(--accent); font-size:.95rem;}
+  .edit-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; text-align:left;}
+  .edit-grid label{font-size:.78rem; font-weight:700; color:var(--muted);
+    display:flex; flex-direction:column; gap:3px;}
+  .edit-grid label.wide{grid-column:1/-1;}
+  .edit-grid input, .edit-grid textarea{width:100%; font-size:.9rem; padding:7px 9px;}
+  .edit-grid textarea{min-height:44px; resize:vertical;}
+  @media(max-width:640px){ .edit-grid{grid-template-columns:1fr;} }
+
   /* generic modal */
   .modal-panel{width:min(520px,100%); background:var(--panel); border:1px solid var(--border);
     border-radius:18px; padding:26px; text-align:center; box-shadow:var(--shadow);}
@@ -249,7 +269,7 @@
   <section id="scr-setup" aria-label="Game setup">
     <div class="card">
       <h2>Set up the game</h2>
-      <p class="sub">Two teams · 5 questions each · host runs the show</p>
+      <p class="sub">Two teams · open-ended questions · the host runs the show</p>
       <div class="team-inputs">
         <div>
           <label for="in-team1">Team 1 name</label>
@@ -268,12 +288,16 @@
         </span>
         <span class="hintline">A few boxes hide a small surprise perk (max one per team, never game-deciding).</span>
       </div>
+      <div class="size-row" role="radiogroup" aria-label="Board size">
+        <label><input type="radio" name="boardsize" value="20" checked> 20 boxes · 10 questions per team</label>
+        <label><input type="radio" name="boardsize" value="10"> 10 boxes · 5 per team</label>
+      </div>
       <p class="starter-label">🪙 Toss a real coin, then tap the winner:</p>
       <div class="btn-row">
         <button id="btn-pick1" class="btn btn-blue">Team 1 starts</button>
         <button id="btn-pick2" class="btn btn-blue">Team 2 starts</button>
       </div>
-      <div id="toss-result" role="status" aria-live="polite">Waiting for the coin toss…</div>
+      <div id="toss-result" role="status" aria-live="polite">Team 1 starts by default — tap a team or flip to change.</div>
       <details id="virtual-toss">
         <summary>No coin handy? Flip a virtual one</summary>
         <div class="coin-area">
@@ -285,9 +309,10 @@
         </div>
       </details>
       <div class="btn-row" style="margin-top:14px;">
-        <button id="btn-start" class="btn btn-primary" disabled>▶ Start game</button>
+        <button id="btn-start" class="btn btn-primary">▶ Start game</button>
       </div>
       <div class="btn-row" style="margin-top:10px;">
+        <button class="linklike" id="btn-edit-questions">✏️ edit questions (admin)</button>
         <button class="linklike" id="btn-cleardata">clear saved data</button>
       </div>
     </div>
@@ -412,13 +437,37 @@
       </div>
 
       <div class="lifelines" id="q-lifelines">
-        <span class="lbl">Lifelines — one per team for the whole game</span>
+        <span class="lbl">Lifelines: one per team per game · Skip &amp; Return: once per team, doesn't use your lifeline</span>
         <button class="llbtn" id="ll-time">⏱ Extra time +30s</button>
         <button class="llbtn" id="ll-hint">💡 Hint</button>
         <button class="llbtn" id="ll-first">🔤 First letter</button>
         <button class="llbtn" id="ll-skip">⏭ Skip &amp; return</button>
         <button class="llbtn hidden" id="ll-gift-hint">🎁 Mystery hint</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ QUESTION EDITOR (ADMIN) ============ -->
+<div id="editor-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+  <div class="qpanel">
+    <div class="qhead">
+      <h2 id="editor-title">✏️ Question editor</h2>
+      <span class="qteam">saved on this device</span>
+    </div>
+    <p class="editor-note">Boxes A &amp; B play on the 10-box board; C &amp; D join on the 20-box board.
+      Accepted answers are comma-separated. Leave "first letter" blank to use the answer's first letter.</p>
+    <div id="editor-list"></div>
+    <h3 style="margin:18px 0 8px;">⚖ Tie-breaker</h3>
+    <div class="editor-box"><div class="edit-grid">
+      <label class="wide">Question <textarea id="ed-tb-q"></textarea></label>
+      <label class="wide">Answer <input id="ed-tb-a"></label>
+    </div></div>
+    <div id="editor-error" role="alert" class="qnote timeup hidden"></div>
+    <div class="qactions" style="margin-top:16px;">
+      <button id="btn-ed-save" class="btn btn-primary">💾 Save questions</button>
+      <button id="btn-ed-cancel" class="btn btn-ghost">Cancel</button>
+      <button id="btn-ed-restore" class="chipbtn">Restore default questions</button>
     </div>
   </div>
 </div>
@@ -437,8 +486,9 @@
 "use strict";
 
 /* ================================================================
-   QUESTION BANK — EDIT ME!
-   Replace the sample questions freely. Fields per box:
+   DEFAULT QUESTION BANK — EDIT ME (or use the ✏️ editor in the app)!
+   20 boxes: four per value, letters A–D. The 10-box board uses only
+   A & B. Fields per box:
      id              — keep as is (drives the board layout)
      points          — keep as is (drives scoring and timer length)
      question        — the open-ended question read to the team
@@ -448,8 +498,10 @@
      hint            — shown by the Hint lifeline
      firstLetter     — shown by the First Letter lifeline
      explanation     — optional, shown after the answer is revealed
+   Admin edits made in the app are stored in localStorage and
+   override these defaults on that device.
    ================================================================ */
-const QUESTION_BANK = {
+const DEFAULT_QUESTION_BANK = {
   boxes: [
     { id:"100A", points:100,
       question:"Who built the ark that saved his family from the flood?",
@@ -465,6 +517,20 @@ const QUESTION_BANK = {
       hint:"It is also called the City of David.",
       firstLetter:"B",
       explanation:"Luke 2:4–7 — foretold by the prophet Micah (Micah 5:2)." },
+    { id:"100C", points:100,
+      question:"How many days and nights did it rain during the great flood?",
+      answer:"Forty",
+      acceptedAnswers:["40","40 days","Forty days","Forty days and forty nights"],
+      hint:"The same number of days Jesus fasted in the wilderness.",
+      firstLetter:"F",
+      explanation:"Genesis 7:12 — rain fell for forty days and forty nights." },
+    { id:"100D", points:100,
+      question:"Who was the first man God created?",
+      answer:"Adam",
+      acceptedAnswers:[],
+      hint:"God formed him from the dust of the ground.",
+      firstLetter:"A",
+      explanation:"Genesis 2:7 — God breathed into him the breath of life." },
     { id:"200A", points:200,
       question:"Which prophet was swallowed by a great fish after running away from God?",
       answer:"Jonah",
@@ -479,6 +545,20 @@ const QUESTION_BANK = {
       hint:"He picked five smooth stones from the stream but needed only one.",
       firstLetter:"S",
       explanation:"1 Samuel 17 — David refused Saul's armour and trusted God instead." },
+    { id:"200C", points:200,
+      question:"What food fell from heaven to feed the Israelites in the desert?",
+      answer:"Manna",
+      acceptedAnswers:["Manna and quail"],
+      hint:"Its name comes from the question 'What is it?'",
+      firstLetter:"M",
+      explanation:"Exodus 16 — it appeared with the morning dew for forty years." },
+    { id:"200D", points:200,
+      question:"Which disciple denied Jesus three times before the rooster crowed?",
+      answer:"Peter",
+      acceptedAnswers:["Simon Peter","Simon"],
+      hint:"He was a fisherman, and later a leader of the early church.",
+      firstLetter:"P",
+      explanation:"Luke 22:54–62 — he wept bitterly when the rooster crowed." },
     { id:"300A", points:300,
       question:"Who interpreted Pharaoh's dreams and became second-in-command over Egypt?",
       answer:"Joseph",
@@ -493,6 +573,20 @@ const QUESTION_BANK = {
       hint:"The mountain is also called Horeb in some passages.",
       firstLetter:"S",
       explanation:"Exodus 19–20 — the covenant was given there after the exodus from Egypt." },
+    { id:"300C", points:300,
+      question:"Which queen travelled to test King Solomon with hard questions?",
+      answer:"The Queen of Sheba",
+      acceptedAnswers:["Queen of Sheba","Sheba"],
+      hint:"She arrived from the south with camels carrying spices and gold.",
+      firstLetter:"S",
+      explanation:"1 Kings 10 — she declared Solomon's wisdom exceeded his fame." },
+    { id:"300D", points:300,
+      question:"In which river was Jesus baptised?",
+      answer:"The Jordan",
+      acceptedAnswers:["Jordan","River Jordan","Jordan River","The Jordan River"],
+      hint:"John the Baptist was baptising people there.",
+      firstLetter:"J",
+      explanation:"Matthew 3:13 — the Spirit descended like a dove as he came up." },
     { id:"400A", points:400,
       question:"Which apostle worked as a tax collector before following Jesus?",
       answer:"Matthew",
@@ -507,6 +601,20 @@ const QUESTION_BANK = {
       hint:"It happens at the tomb of Lazarus.",
       firstLetter:"J",
       explanation:"Two words showing Jesus' compassion just before raising Lazarus." },
+    { id:"400C", points:400,
+      question:"Which two cities did God destroy with burning sulfur in the book of Genesis?",
+      answer:"Sodom and Gomorrah",
+      acceptedAnswers:["Sodom & Gomorrah","Gomorrah and Sodom"],
+      hint:"Lot and his family were told to flee from them without looking back.",
+      firstLetter:"S",
+      explanation:"Genesis 19 — Lot's wife looked back and became a pillar of salt." },
+    { id:"400D", points:400,
+      question:"On the road to which city was Saul converted by a blinding light?",
+      answer:"Damascus",
+      acceptedAnswers:[],
+      hint:"He was travelling there to arrest followers of Jesus.",
+      firstLetter:"D",
+      explanation:"Acts 9 — Saul became Paul, the great missionary apostle." },
     { id:"500A", points:500,
       question:"Which Old Testament prophet was taken up to heaven in a whirlwind, with chariots of fire appearing?",
       answer:"Elijah",
@@ -520,7 +628,21 @@ const QUESTION_BANK = {
       acceptedAnswers:["7","Seven churches"],
       hint:"Ephesus and Laodicea are two of them.",
       firstLetter:"S",
-      explanation:"Revelation 2–3 — Ephesus, Smyrna, Pergamum, Thyatira, Sardis, Philadelphia, Laodicea." }
+      explanation:"Revelation 2–3 — Ephesus, Smyrna, Pergamum, Thyatira, Sardis, Philadelphia, Laodicea." },
+    { id:"500C", points:500,
+      question:"Who is the oldest person recorded in the Bible, living 969 years?",
+      answer:"Methuselah",
+      acceptedAnswers:["Metushelah"],
+      hint:"He was Noah's grandfather.",
+      firstLetter:"M",
+      explanation:"Genesis 5:27 — he died in the year of the flood." },
+    { id:"500D", points:500,
+      question:"Which two Old Testament figures appeared with Jesus at the Transfiguration?",
+      answer:"Moses and Elijah",
+      acceptedAnswers:["Elijah and Moses"],
+      hint:"One received the Law; the other was carried to heaven in a whirlwind.",
+      firstLetter:"M",
+      explanation:"Matthew 17:3 — they spoke with Jesus on the high mountain." }
   ],
   tiebreaker: {
     question:"Name BOTH the first and the last books of the Bible.",
@@ -530,10 +652,22 @@ const QUESTION_BANK = {
 
 /* Timer length (seconds) per point value */
 const TIMER_BY_VALUE = { 100:30, 200:40, 300:50, 400:60, 500:75 };
-const QUESTIONS_PER_TEAM = 5;
-const MYSTERY_BOX_COUNT = 3;   // boxes that secretly hold a reward when enabled
-const SAVE_KEY = "twoTeamBoxQuiz_v1";
+const SAVE_KEY = "twoTeamBoxQuiz_v2";       // bumped: v1 saves predate 20-box boards
 const PREFS_KEY = "twoTeamBoxQuiz_prefs";
+const BANK_KEY = "twoTeamBoxQuiz_bank_v1";  // admin-edited questions live here
+
+/* The playable bank: admin edits (saved on this device) override the defaults */
+function loadBank(){
+  try{
+    const raw = localStorage.getItem(BANK_KEY);
+    if (!raw) return null;
+    const b = JSON.parse(raw);
+    if (b && Array.isArray(b.boxes) && b.boxes.length === DEFAULT_QUESTION_BANK.boxes.length
+        && b.tiebreaker && b.boxes.every(x => x.id && x.points && x.question && x.answer)) return b;
+  }catch(e){}
+  return null;
+}
+let QUESTION_BANK = loadBank() || JSON.parse(JSON.stringify(DEFAULT_QUESTION_BANK));
 
 /* ================================================================
    STATE
@@ -543,18 +677,34 @@ let timerInterval = null;  // runtime only
 let lastAward = null;      // runtime only — drives the score-pop animation
 let prefs = { sound:true, theme:"dark" };
 
-function freshState(names, starter, mysteryOn){
+/* Boxes in play: A & B on the 10-box board; A–D on the 20-box board */
+function activeBoxDefs(boardSize){
+  return QUESTION_BANK.boxes.filter(b => boardSize >= 20 || /[AB]$/.test(b.id));
+}
+/* Display order: one row per letter, values ascending across the row */
+function sortForDisplay(defs){
+  return defs.slice().sort((x,y)=>{
+    const lx = x.id.slice(-1), ly = y.id.slice(-1);
+    return lx===ly ? x.points-y.points : (lx<ly ? -1 : 1);
+  });
+}
+
+function freshState(names, starter, mysteryOn, boardSize){
+  const defs = activeBoxDefs(boardSize);
   const boxes = {};
-  QUESTION_BANK.boxes.forEach(b => boxes[b.id] = { status:"unopened", pendingTeam:null, usedBy:null, gotIt:null });
+  defs.forEach(b => boxes[b.id] = { status:"unopened", pendingTeam:null, usedBy:null, gotIt:null });
   let mysteryBoxes = [];
   if (mysteryOn){
-    mysteryBoxes = shuffle(QUESTION_BANK.boxes.map(b=>b.id)).slice(0, MYSTERY_BOX_COUNT);
+    mysteryBoxes = shuffle(defs.map(b=>b.id)).slice(0, boardSize >= 20 ? 4 : 3);
   }
   return {
     phase:"board",
+    boardSize,
+    perTeam: defs.length/2,               // questions each team must answer
+    order: sortForDisplay(defs).map(b=>b.id),
     teams: names.map(n => ({
       name:n, score:0, opened:0, resolved:0,
-      lifelineUsed:false, mysteryGot:false, extraHints:0
+      lifelineUsed:false, skipUsed:false, mysteryGot:false, extraHints:0
     })),
     currentTeam: starter,
     boxes, mysteryEnabled:mysteryOn, mysteryBoxes,
@@ -631,12 +781,19 @@ function showScreen(name){
 /* ================================================================
    SETUP + COIN TOSS
    ================================================================ */
-let tossStarter = null;
+let tossStarter = 0; // Team 1 starts unless changed — Start is never blocked
 function setStarter(t, viaToss){
   tossStarter = t;
   const name = t===0 ? $("in-team1").value.trim()||"Team 1" : $("in-team2").value.trim()||"Team 2";
-  $("toss-result").innerHTML = (viaToss?"🪙 ":"") + "<strong>"+esc(name)+"</strong> starts!";
-  $("btn-start").disabled = false;
+  $("btn-pick1").classList.toggle("picked", t===0);
+  $("btn-pick2").classList.toggle("picked", t===1);
+  $("btn-pick1").setAttribute("aria-pressed", String(t===0));
+  $("btn-pick2").setAttribute("aria-pressed", String(t===1));
+  $("toss-result").innerHTML = (viaToss?"🪙 ":"") + "<strong>"+esc(name)+"</strong> starts! (tap the other team to change)";
+}
+function resetSetupStarter(){
+  setStarter(0, false);
+  $("toss-result").textContent = "Team 1 starts by default — tap a team or flip to change.";
 }
 /* Team 1 calls heads or tails; a random flip decides who starts */
 function callToss(call){ // call: 0 = heads, 1 = tails
@@ -650,11 +807,10 @@ function callToss(call){ // call: 0 = heads, 1 = tails
     coin.textContent = flip === 0 ? "H" : "T";
     const n1 = $("in-team1").value.trim()||"Team 1";
     const n2 = $("in-team2").value.trim()||"Team 2";
+    setStarter(winner, true);
     $("toss-result").innerHTML = "🪙 It's <strong>" + (flip===0 ? "Heads" : "Tails") + "</strong>! "
       + esc(n1) + " called " + (call===0 ? "heads" : "tails")
-      + " — <strong>" + esc(winner===0 ? n1 : n2) + "</strong> starts!";
-    tossStarter = winner;
-    $("btn-start").disabled = false;
+      + " — <strong>" + esc(winner===0 ? n1 : n2) + "</strong> starts! (tap a team above to override)";
     $("btn-heads").disabled = $("btn-tails").disabled = false;
   };
   if (reducedMotion()){ done(); return; }
@@ -666,6 +822,68 @@ $("btn-heads").addEventListener("click", ()=> callToss(0));
 $("btn-tails").addEventListener("click", ()=> callToss(1));
 twoTap($("btn-cleardata"), "tap again to clear", ()=>{
   clearSave(); localStorage.removeItem(PREFS_KEY); location.reload();
+});
+
+/* ================================================================
+   QUESTION EDITOR (ADMIN) — edit every box + the tie-breaker.
+   Saved to localStorage on this device; overrides the defaults.
+   ================================================================ */
+function openEditor(){
+  const list = $("editor-list");
+  list.innerHTML = "";
+  QUESTION_BANK.boxes.forEach((b,i)=>{
+    const d = document.createElement("div");
+    d.className = "editor-box";
+    d.innerHTML = '<h4>Box '+b.id.replace(/([A-D])$/," $1")+' — '+b.points+' points</h4>'
+      + '<div class="edit-grid">'
+      + '<label class="wide">Question <textarea data-f="question" data-i="'+i+'">'+esc(b.question)+'</textarea></label>'
+      + '<label>Answer <input data-f="answer" data-i="'+i+'" value="'+esc(b.answer)+'"></label>'
+      + '<label>Accepted answers (comma-separated) <input data-f="acceptedAnswers" data-i="'+i+'" value="'+esc((b.acceptedAnswers||[]).join(", "))+'"></label>'
+      + '<label>Hint <input data-f="hint" data-i="'+i+'" value="'+esc(b.hint||"")+'"></label>'
+      + '<label>First letter <input data-f="firstLetter" data-i="'+i+'" maxlength="3" value="'+esc(b.firstLetter||"")+'"></label>'
+      + '<label class="wide">Explanation (optional) <textarea data-f="explanation" data-i="'+i+'">'+esc(b.explanation||"")+'</textarea></label>'
+      + '</div>';
+    list.appendChild(d);
+  });
+  $("ed-tb-q").value = QUESTION_BANK.tiebreaker.question;
+  $("ed-tb-a").value = QUESTION_BANK.tiebreaker.answer;
+  $("editor-error").classList.add("hidden");
+  $("editor-overlay").classList.remove("hidden");
+  $("editor-overlay").querySelector(".qpanel").scrollTop = 0;
+}
+$("btn-edit-questions").addEventListener("click", openEditor);
+$("btn-ed-cancel").addEventListener("click", ()=> $("editor-overlay").classList.add("hidden"));
+$("btn-ed-save").addEventListener("click", ()=>{
+  const boxes = JSON.parse(JSON.stringify(QUESTION_BANK.boxes));
+  $("editor-list").querySelectorAll("[data-f]").forEach(el=>{
+    const i = +el.dataset.i, f = el.dataset.f, v = el.value.trim();
+    if (f==="acceptedAnswers") boxes[i][f] = v ? v.split(",").map(s=>s.trim()).filter(Boolean) : [];
+    else boxes[i][f] = v;
+  });
+  let bad = null;
+  boxes.forEach(b=>{
+    if (!b.question || !b.answer) bad = bad || b.id;
+    if (!b.firstLetter) b.firstLetter = b.answer.replace(/^["“]/,"").charAt(0).toUpperCase();
+  });
+  if (bad){
+    $("editor-error").textContent = "Box "+bad+" needs both a question and an answer.";
+    $("editor-error").classList.remove("hidden");
+    return;
+  }
+  QUESTION_BANK = {
+    boxes,
+    tiebreaker: {
+      question: $("ed-tb-q").value.trim() || DEFAULT_QUESTION_BANK.tiebreaker.question,
+      answer:   $("ed-tb-a").value.trim() || DEFAULT_QUESTION_BANK.tiebreaker.answer
+    }
+  };
+  localStorage.setItem(BANK_KEY, JSON.stringify(QUESTION_BANK));
+  $("editor-overlay").classList.add("hidden");
+});
+twoTap($("btn-ed-restore"), "Tap again to restore", ()=>{
+  localStorage.removeItem(BANK_KEY);
+  QUESTION_BANK = JSON.parse(JSON.stringify(DEFAULT_QUESTION_BANK));
+  openEditor(); // re-render the editor with the defaults
 });
 $("btn-pick1").addEventListener("click", ()=> setStarter(0,true));
 $("btn-pick2").addEventListener("click", ()=> setStarter(1,true));
@@ -686,7 +904,8 @@ refreshPickLabels();
 $("btn-start").addEventListener("click", ()=>{
   const n1 = $("in-team1").value.trim()||"Team 1";
   const n2 = $("in-team2").value.trim()||"Team 2";
-  state = freshState([n1,n2], tossStarter ?? 0, $("in-mystery").checked);
+  const boardSize = parseInt(document.querySelector('input[name="boardsize"]:checked').value, 10);
+  state = freshState([n1,n2], tossStarter, $("in-mystery").checked, boardSize);
   save();
   showScreen("board");
   renderBoard();
@@ -696,12 +915,12 @@ $("btn-start").addEventListener("click", ()=>{
    BOARD RENDER
    ================================================================ */
 function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function teamDone(t){ return state.teams[t].resolved >= QUESTIONS_PER_TEAM; }
+function teamDone(t){ return state.teams[t].resolved >= state.perTeam; }
 function pendingBoxFor(t){
   return Object.keys(state.boxes).find(id => state.boxes[id].status==="pending" && state.boxes[id].pendingTeam===t) || null;
 }
 function mustAnswerPending(t){
-  return state.teams[t].opened >= QUESTIONS_PER_TEAM && !!pendingBoxFor(t);
+  return state.teams[t].opened >= state.perTeam && !!pendingBoxFor(t);
 }
 
 function renderBoard(){
@@ -713,8 +932,9 @@ function renderBoard(){
     card.querySelector(".tscore").textContent = tm.score;
     const meta = card.querySelector(".tmeta");
     meta.innerHTML = "";
-    meta.appendChild(badge("Questions "+tm.resolved+"/"+QUESTIONS_PER_TEAM, ""));
+    meta.appendChild(badge("Questions "+tm.resolved+"/"+state.perTeam, ""));
     meta.appendChild(badge(tm.lifelineUsed ? "Lifeline used" : "Lifeline ✓", tm.lifelineUsed ? "off" : "ok"));
+    meta.appendChild(badge(tm.skipUsed ? "Skip used" : "Skip ✓", tm.skipUsed ? "off" : "ok"));
     if (state.mysteryEnabled && tm.mysteryGot) meta.appendChild(badge("🎁 Mystery claimed","gift"));
     if (tm.extraHints>0) meta.appendChild(badge("🎁 Extra hint ×"+tm.extraHints,"gift"));
     if (pendingBoxFor(t)) meta.appendChild(badge("⏳ Pending: "+pendingBoxFor(t).replace(/([AB])$/," $1"),"gift"));
@@ -738,15 +958,17 @@ function renderBoard(){
   let msg;
   if (mustAnswerPending(cur)){
     msg = '<span class="who">'+esc(tm.name)+'</span> — answer your pending question (tap the striped box).';
+  } else if (pendingBoxFor(cur)){
+    msg = '<span class="who">'+esc(tm.name)+'</span> — pick a box, or answer your pending one ('+(state.perTeam - tm.opened)+' pick'+((state.perTeam-tm.opened)===1?"":"s")+' left)';
   } else {
-    msg = '<span class="who">'+esc(tm.name)+'</span> — pick a box! ('+(QUESTIONS_PER_TEAM - tm.opened)+' pick'+((QUESTIONS_PER_TEAM-tm.opened)===1?"":"s")+' left)';
+    msg = '<span class="who">'+esc(tm.name)+'</span> — pick a box! ('+(state.perTeam - tm.opened)+' pick'+((state.perTeam-tm.opened)===1?"":"s")+' left)';
   }
   $("turn-banner").innerHTML = msg;
 
   // grid
   const grid = $("board-grid");
   grid.innerHTML = "";
-  QUESTION_BANK.boxes.forEach(def=>{
+  state.order.map(boxDef).forEach(def=>{
     const bs = state.boxes[def.id];
     const btn = document.createElement("button");
     btn.className = "tile";
@@ -759,7 +981,8 @@ function renderBoard(){
       btn.setAttribute("aria-label", def.points+" "+letter+" — answered");
     } else if (bs.status==="pending"){
       btn.classList.add("pending");
-      const mine = bs.pendingTeam===state.currentTeam && mustAnswerPending(state.currentTeam);
+      // the owning team may answer its pending question on any of its turns
+      const mine = bs.pendingTeam===state.currentTeam;
       btn.disabled = !mine;
       btn.innerHTML = '<span class="val">⏳ '+def.points+'</span><span class="ltr">'+esc(state.teams[bs.pendingTeam].name)+'</span>';
       btn.setAttribute("aria-label", def.points+" "+letter+" — pending for "+state.teams[bs.pendingTeam].name);
@@ -767,8 +990,8 @@ function renderBoard(){
     } else {
       btn.innerHTML = '<span class="val">'+def.points+'</span><span class="ltr">BOX '+letter+'</span>';
       btn.setAttribute("aria-label", "Open box "+def.points+" "+letter);
-      // board locked while current team must answer its pending question
-      btn.disabled = mustAnswerPending(state.currentTeam) || state.teams[state.currentTeam].opened >= QUESTIONS_PER_TEAM;
+      // board locked once the current team has used all its picks
+      btn.disabled = state.teams[state.currentTeam].opened >= state.perTeam;
       btn.addEventListener("click", ()=> openQuestion(def.id, false));
     }
     grid.appendChild(btn);
@@ -890,9 +1113,11 @@ function renderQuestion(){
   $("q-judge").classList.remove("hidden");
   $("q-continue-row").classList.add("hidden");
 
-  // lifelines: one per team per game; not usable on a returned (skipped) question
-  const canLL = !tm.lifelineUsed && !a.isPending && !a.resolved;
-  ["ll-time","ll-hint","ll-first","ll-skip"].forEach(id=> $(id).disabled = !canLL);
+  // lifelines: one per team per game, usable on a returned question too;
+  // Skip & Return is separate (once per team, not on an already-skipped box)
+  const canLL = !tm.lifelineUsed && !a.resolved;
+  ["ll-time","ll-hint","ll-first"].forEach(id=> $(id).disabled = !canLL);
+  $("ll-skip").disabled = tm.skipUsed || a.isPending || a.resolved;
   $("ll-gift-hint").classList.toggle("hidden", !(tm.extraHints>0 && !a.hintShown && !a.resolved));
   $("q-lifelines").classList.toggle("hidden", a.resolved);
 
@@ -1056,20 +1281,16 @@ $("ll-gift-hint").addEventListener("click", ()=>{
 });
 
 function useLifeline(kind){
-  const a = state.active; if (!a || a.resolved || a.isPending) return;
+  const a = state.active; if (!a || a.resolved) return;
   const tm = state.teams[a.team];
-  if (tm.lifelineUsed) return;
-  tm.lifelineUsed = true;
   const def = boxDef(a.boxId);
-  if (kind==="time"){
-    a.timeLeft += 30;
-    if (a.timeUp){ a.timeUp=false; $("q-timeup").classList.add("hidden"); startTimer(); }
-    updateTimerDisplay();
-  }
-  if (kind==="hint")  showHint("💡 Hint: " + def.hint);
-  if (kind==="first") showHint("🔤 The answer starts with “" + (def.firstLetter || def.answer.replace(/^["“]/,"").charAt(0).toUpperCase()) + "”");
+
   if (kind==="skip"){
-    // question goes to the pending area; same team answers it after its other questions
+    // Skip & Return is its own once-per-team ability — it does NOT use the
+    // lifeline. The question parks in the pending area; the same team may
+    // answer it on any later turn (and must, before the game can end).
+    if (tm.skipUsed || a.isPending) return;
+    tm.skipUsed = true;
     stopTimer();
     state.boxes[a.boxId].status = "pending";
     state.boxes[a.boxId].pendingTeam = a.team;
@@ -1082,7 +1303,19 @@ function useLifeline(kind){
     renderBoard();
     return;
   }
-  ["ll-time","ll-hint","ll-first","ll-skip"].forEach(id=> $(id).disabled = true);
+
+  // Extra Time / Hint / First Letter: one per team for the whole game,
+  // usable on any of the team's questions — including a returned one.
+  if (tm.lifelineUsed) return;
+  tm.lifelineUsed = true;
+  if (kind==="time"){
+    a.timeLeft += 30;
+    if (a.timeUp){ a.timeUp=false; $("q-timeup").classList.add("hidden"); startTimer(); }
+    updateTimerDisplay();
+  }
+  if (kind==="hint")  showHint("💡 Hint: " + def.hint);
+  if (kind==="first") showHint("🔤 The answer starts with “" + (def.firstLetter || def.answer.replace(/^["“]/,"").charAt(0).toUpperCase()) + "”");
+  ["ll-time","ll-hint","ll-first"].forEach(id=> $(id).disabled = true);
   save();
 }
 function showHint(text){
@@ -1199,7 +1432,8 @@ function tbWin(t){
 $("btn-rematch").addEventListener("click", ()=>{
   const names = state.teams.map(t=>t.name);
   const mystery = state.mysteryEnabled;
-  state = freshState(names, Math.random()<0.5?0:1, mystery);
+  const boardSize = state.boardSize || 10;
+  state = freshState(names, Math.random()<0.5?0:1, mystery, boardSize);
   save();
   showScreen("board");
   renderBoard();
@@ -1207,8 +1441,7 @@ $("btn-rematch").addEventListener("click", ()=>{
 $("btn-newgame").addEventListener("click", ()=>{
   clearSave();
   state = null;
-  $("btn-start").disabled = true;
-  $("toss-result").textContent = "Waiting for the coin toss…";
+  resetSetupStarter();
   showScreen("setup");
 });
 
@@ -1262,8 +1495,7 @@ twoTap($("btn-endgame"), "Tap again to end game", ()=> endGame());
 twoTap($("btn-reset"), "Tap again to reset", ()=>{
   stopTimer(); clearSave(); state = null;
   $("q-overlay").classList.add("hidden");
-  $("btn-start").disabled = true;
-  $("toss-result").textContent = "Waiting for the coin toss…";
+  resetSetupStarter();
   showScreen("setup");
 });
 
@@ -1316,6 +1548,10 @@ document.addEventListener("keydown", (e)=>{
     if (e.key==="Escape") closeModal();
     return;
   }
+  if (!$("editor-overlay").classList.contains("hidden")){
+    if (e.key==="Escape") $("editor-overlay").classList.add("hidden");
+    return;
+  }
   const qOpen = !$("q-overlay").classList.contains("hidden") && state && state.active && !state.active.awaitSwap;
   if (!qOpen) return;
   const a = state.active;
@@ -1334,6 +1570,7 @@ document.addEventListener("keydown", (e)=>{
    BOOT — offer to continue a saved game
    ================================================================ */
 loadPrefs();
+resetSetupStarter();
 const saved = loadSave();
 if (saved && saved.phase && saved.teams){
   openModal("Continue saved game?",
