@@ -1,3 +1,4 @@
 node_modules/
-test-results/
+.playwright-browsers/
 playwright-report/
+test-results/

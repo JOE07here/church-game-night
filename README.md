@@ -24,6 +24,7 @@ above and project it on a big screen.
 - Score animations, confetti finale, and a host-configurable tie-breaker
 - Undo, manual score adjust, and two-tap confirmations for destructive actions
 - Auto-save to localStorage — refreshing mid-game offers Continue / New Game
+- On-screen custom question editor with quick-paste plus JSON import/export
 - Dark/light theme, sound toggle, keyboard shortcuts, ARIA labels, reduced-motion support
 
 ## Practice Mode
@@ -37,18 +38,30 @@ returns to the setup screen. Every host control works exactly like the real
 game — lifelines, Skip & Return, undo, score adjust, tie-breaker — but nothing
 is saved: your real saved game, custom questions, and settings are untouched.
 
-## Tests
+## Edit the questions
 
-Automated Playwright tests cover practice mode and real-game regressions:
+From the setup screen, choose **Add or edit questions**. You can edit any box
+directly or quick-paste one question per line in this format:
+
+```text
+Question | Answer | accepted answer 1; accepted answer 2 | Hint | Explanation
+```
+
+Choose **Save questions** when finished. Custom questions are stored in that
+browser. Use **Export question set** to create a JSON backup or move the set to
+another device, then use **Import question set** there.
+
+Developers can also edit the clearly marked `DEFAULT_QUESTION_BANK` near the top
+of the `<script>` section in `index.html`.
+
+## Tests
 
 ```bash
 npm install
-npx playwright install chromium
+npm run test:install-browser
 npm test
 ```
 
-## Edit the questions
-
-Open `index.html` and find the clearly marked `QUESTION_BANK` at the top of the
-`<script>` section. Each box has `question`, `answer`, `acceptedAnswers`, `hint`,
-`firstLetter`, and an optional `explanation` — replace them freely.
+The Playwright suite covers setup, custom questions, scoring, turn changes,
+mobile layout, reload recovery after an answer has been judged, and the full
+practice-mode flow (demo questions, isolation from real saves, and exit).

@@ -2,11 +2,14 @@
   "name": "church-game-night",
   "version": "1.0.0",
   "private": true,
-  "description": "Playwright tests for the Two-Team Box Quiz (single-file game in index.html)",
+  "type": "module",
   "scripts": {
-    "test": "playwright test"
+    "serve": "node tests/server.mjs",
+    "test": "PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers playwright test",
+    "test:headed": "PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers playwright test --headed",
+    "test:install-browser": "PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers playwright install chromium --only-shell --no-progress"
   },
   "devDependencies": {
-    "@playwright/test": "^1.45.0"
+    "@playwright/test": "1.61.1"
   }
 }

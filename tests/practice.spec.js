@@ -1,6 +1,6 @@
 // Playwright tests for Practice Mode and real-game regression.
-// Run with: npm test  (serves index.html via python3 http.server, see playwright.config.js)
-const { test, expect } = require('@playwright/test');
+// Run with: npm test  (serves index.html via tests/server.mjs, see playwright.config.js)
+import { expect, test } from '@playwright/test';
 
 const SAVE_KEY = 'twoTeamBoxQuiz_v2';
 const BANK_KEY = 'twoTeamBoxQuiz_bank_v1';

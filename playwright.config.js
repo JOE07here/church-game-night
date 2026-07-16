@@ -1,17 +1,22 @@
-// @ts-check
-const { defineConfig } = require('@playwright/test');
+import { defineConfig } from "@playwright/test";
 
-module.exports = defineConfig({
-  testDir: './tests',
-  timeout: 30000,
-  fullyParallel: false,
+export default defineConfig({
+  testDir: "./tests",
+  fullyParallel: true,
+  forbidOnly: true,
+  retries: 0,
+  reporter: "list",
   use: {
-    baseURL: 'http://127.0.0.1:8654'
+    baseURL: "http://127.0.0.1:4173",
+    reducedMotion: "reduce",
+    trace: "retain-on-failure"
   },
   webServer: {
-    command: 'python3 -m http.server 8654 --bind 127.0.0.1',
-    url: 'http://127.0.0.1:8654/index.html',
-    reuseExistingServer: true,
-    timeout: 15000
-  }
+    command: "node tests/server.mjs",
+    url: "http://127.0.0.1:4173",
+    reuseExistingServer: true
+  },
+  projects: [
+    { name: "chromium", use: { browserName: "chromium" } }
+  ]
 });
