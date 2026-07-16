@@ -224,6 +224,15 @@
 
   /* question editor (admin) */
   .editor-note{color:var(--muted); font-size:.85rem; margin-bottom:12px;}
+  .editor-tools{background:var(--panel2); border:1px solid var(--border); border-radius:12px;
+    padding:12px 14px; margin-bottom:14px; text-align:left;}
+  .editor-tools summary{cursor:pointer; font-weight:800; color:var(--accent);}
+  .editor-tools summary:focus-visible{outline:3px solid var(--accent); outline-offset:2px; border-radius:6px;}
+  .editor-tools textarea{width:100%; min-height:120px; margin:10px 0 8px; resize:vertical;}
+  .editor-tools .btn-row{justify-content:flex-start; margin-top:10px;}
+  .editor-tools .format-help{color:var(--muted); font-size:.78rem; line-height:1.45; margin-top:7px;}
+  .editor-status{font-size:.85rem; font-weight:700; min-height:1.3em; margin-top:8px; color:var(--good);}
+  .editor-status.error{color:var(--bad);}
   .editor-box{background:var(--panel2); border:1px solid var(--border); border-radius:12px;
     padding:12px 14px; margin-bottom:10px;}
   .editor-box h4{margin-bottom:8px; color:var(--accent); font-size:.95rem;}
@@ -312,7 +321,7 @@
         <button id="btn-start" class="btn btn-primary">▶ Start game</button>
       </div>
       <div class="btn-row" style="margin-top:10px;">
-        <button class="linklike" id="btn-edit-questions">✏️ edit questions (admin)</button>
+        <button class="linklike" id="btn-edit-questions">✏️ Add or edit questions</button>
         <button class="linklike" id="btn-cleardata">clear saved data</button>
       </div>
     </div>
@@ -452,11 +461,28 @@
 <div id="editor-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="editor-title">
   <div class="qpanel">
     <div class="qhead">
-      <h2 id="editor-title">✏️ Question editor</h2>
-      <span class="qteam">saved on this device</span>
+      <h2 id="editor-title">✏️ Question setup</h2>
+      <span class="qteam">custom question set</span>
     </div>
-    <p class="editor-note">Boxes A &amp; B play on the 10-box board; C &amp; D join on the 20-box board.
-      Accepted answers are comma-separated. Leave "first letter" blank to use the answer's first letter.</p>
+    <p class="editor-note">Type directly into any box below. Boxes A &amp; B play on the 10-box board;
+      C &amp; D join on the 20-box board. Accepted answers are comma-separated. Leave "first letter"
+      blank to use the answer's first letter.</p>
+    <div class="editor-tools">
+      <details id="bulk-question-entry">
+        <summary>Quick-paste several questions</summary>
+        <p class="format-help">One question per line, in the selected board's display order. Separate fields with
+          <strong>|</strong>: Question | Answer | accepted answers separated by semicolons | Hint | Explanation.</p>
+        <textarea id="ed-bulk" aria-label="Questions to quick-paste"
+          placeholder="Who built the ark? | Noah | Noe | He built a large boat. | Genesis 6–9"></textarea>
+        <button id="btn-ed-apply-bulk" class="btn btn-blue">Fill selected board</button>
+      </details>
+      <div class="btn-row">
+        <button id="btn-ed-export" class="chipbtn">⬇ Export question set</button>
+        <button id="btn-ed-import" class="chipbtn">⬆ Import question set</button>
+        <input id="ed-import-file" class="hidden" type="file" accept="application/json,.json">
+      </div>
+      <div id="editor-status" class="editor-status" role="status" aria-live="polite"></div>
+    </div>
     <div id="editor-list"></div>
     <h3 style="margin:18px 0 8px;">⚖ Tie-breaker</h3>
     <div class="editor-box"><div class="edit-grid">
@@ -656,14 +682,43 @@ const SAVE_KEY = "twoTeamBoxQuiz_v2";       // bumped: v1 saves predate 20-box b
 const PREFS_KEY = "twoTeamBoxQuiz_prefs";
 const BANK_KEY = "twoTeamBoxQuiz_bank_v1";  // admin-edited questions live here
 
+function normalizeQuestionBank(candidate){
+  if (!candidate || !Array.isArray(candidate.boxes)
+      || candidate.boxes.length !== DEFAULT_QUESTION_BANK.boxes.length
+      || !candidate.tiebreaker) return null;
+  const byId = new Map(candidate.boxes.map(box => [box && box.id, box]));
+  const boxes = [];
+  for (const fallback of DEFAULT_QUESTION_BANK.boxes){
+    const box = byId.get(fallback.id);
+    if (!box || box.points !== fallback.points
+        || typeof box.question !== "string" || !box.question.trim()
+        || typeof box.answer !== "string" || !box.answer.trim()
+        || !Array.isArray(box.acceptedAnswers)) return null;
+    boxes.push({
+      id:fallback.id,
+      points:fallback.points,
+      question:box.question.trim(),
+      answer:box.answer.trim(),
+      acceptedAnswers:box.acceptedAnswers.map(String).map(s=>s.trim()).filter(Boolean),
+      hint:typeof box.hint === "string" ? box.hint.trim() : "",
+      firstLetter:typeof box.firstLetter === "string" ? box.firstLetter.trim() : "",
+      explanation:typeof box.explanation === "string" ? box.explanation.trim() : ""
+    });
+  }
+  const tbQuestion = typeof candidate.tiebreaker.question === "string"
+    ? candidate.tiebreaker.question.trim() : "";
+  const tbAnswer = typeof candidate.tiebreaker.answer === "string"
+    ? candidate.tiebreaker.answer.trim() : "";
+  if (!tbQuestion || !tbAnswer) return null;
+  return { boxes, tiebreaker:{ question:tbQuestion, answer:tbAnswer } };
+}
+
 /* The playable bank: admin edits (saved on this device) override the defaults */
 function loadBank(){
   try{
     const raw = localStorage.getItem(BANK_KEY);
     if (!raw) return null;
-    const b = JSON.parse(raw);
-    if (b && Array.isArray(b.boxes) && b.boxes.length === DEFAULT_QUESTION_BANK.boxes.length
-        && b.tiebreaker && b.boxes.every(x => x.id && x.points && x.question && x.answer)) return b;
+    return normalizeQuestionBank(JSON.parse(raw));
   }catch(e){}
   return null;
 }
@@ -828,7 +883,12 @@ twoTap($("btn-cleardata"), "tap again to clear", ()=>{
    QUESTION EDITOR (ADMIN) — edit every box + the tie-breaker.
    Saved to localStorage on this device; overrides the defaults.
    ================================================================ */
-function openEditor(){
+function setEditorStatus(message, isError){
+  const status = $("editor-status");
+  status.textContent = message || "";
+  status.classList.toggle("error", !!isError);
+}
+function openEditor(statusMessage){
   const list = $("editor-list");
   list.innerHTML = "";
   QUESTION_BANK.boxes.forEach((b,i)=>{
@@ -847,13 +907,13 @@ function openEditor(){
   });
   $("ed-tb-q").value = QUESTION_BANK.tiebreaker.question;
   $("ed-tb-a").value = QUESTION_BANK.tiebreaker.answer;
+  $("ed-bulk").value = "";
   $("editor-error").classList.add("hidden");
+  setEditorStatus(statusMessage || "", false);
   $("editor-overlay").classList.remove("hidden");
   $("editor-overlay").querySelector(".qpanel").scrollTop = 0;
 }
-$("btn-edit-questions").addEventListener("click", openEditor);
-$("btn-ed-cancel").addEventListener("click", ()=> $("editor-overlay").classList.add("hidden"));
-$("btn-ed-save").addEventListener("click", ()=>{
+function collectEditorBank(){
   const boxes = JSON.parse(JSON.stringify(QUESTION_BANK.boxes));
   $("editor-list").querySelectorAll("[data-f]").forEach(el=>{
     const i = +el.dataset.i, f = el.dataset.f, v = el.value.trim();
@@ -865,25 +925,100 @@ $("btn-ed-save").addEventListener("click", ()=>{
     if (!b.question || !b.answer) bad = bad || b.id;
     if (!b.firstLetter) b.firstLetter = b.answer.replace(/^["“]/,"").charAt(0).toUpperCase();
   });
-  if (bad){
-    $("editor-error").textContent = "Box "+bad+" needs both a question and an answer.";
+  if (bad) return { error:"Box "+bad+" needs both a question and an answer." };
+  return {
+    bank:{
+      boxes,
+      tiebreaker:{
+        question: $("ed-tb-q").value.trim() || DEFAULT_QUESTION_BANK.tiebreaker.question,
+        answer:   $("ed-tb-a").value.trim() || DEFAULT_QUESTION_BANK.tiebreaker.answer
+      }
+    }
+  };
+}
+$("btn-edit-questions").addEventListener("click", ()=> openEditor());
+$("btn-ed-cancel").addEventListener("click", ()=> $("editor-overlay").classList.add("hidden"));
+$("btn-ed-save").addEventListener("click", ()=>{
+  const result = collectEditorBank();
+  if (result.error){
+    $("editor-error").textContent = result.error;
     $("editor-error").classList.remove("hidden");
     return;
   }
-  QUESTION_BANK = {
-    boxes,
-    tiebreaker: {
-      question: $("ed-tb-q").value.trim() || DEFAULT_QUESTION_BANK.tiebreaker.question,
-      answer:   $("ed-tb-a").value.trim() || DEFAULT_QUESTION_BANK.tiebreaker.answer
-    }
-  };
+  QUESTION_BANK = result.bank;
   localStorage.setItem(BANK_KEY, JSON.stringify(QUESTION_BANK));
   $("editor-overlay").classList.add("hidden");
+});
+$("btn-ed-apply-bulk").addEventListener("click", ()=>{
+  const lines = $("ed-bulk").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if (!lines.length){ setEditorStatus("Paste at least one question first.", true); return; }
+  const boardSize = parseInt(document.querySelector('input[name="boardsize"]:checked').value, 10);
+  const targets = sortForDisplay(activeBoxDefs(boardSize));
+  if (lines.length > targets.length){
+    setEditorStatus("The selected "+boardSize+"-box board accepts at most "+targets.length+" pasted questions.", true);
+    return;
+  }
+  const parsed = [];
+  for (let i=0;i<lines.length;i++){
+    const parts = lines[i].split("|").map(s=>s.trim());
+    if (parts.length < 2 || !parts[0] || !parts[1]){
+      setEditorStatus("Line "+(i+1)+" needs at least Question | Answer.", true);
+      return;
+    }
+    parsed.push(parts);
+  }
+  parsed.forEach((parts,lineIndex)=>{
+    const bankIndex = QUESTION_BANK.boxes.findIndex(b=>b.id===targets[lineIndex].id);
+    const set = (field,value)=>{
+      const el = $("editor-list").querySelector('[data-i="'+bankIndex+'"][data-f="'+field+'"]');
+      if (el) el.value = value || "";
+    };
+    set("question", parts[0]);
+    set("answer", parts[1]);
+    set("acceptedAnswers", (parts[2]||"").split(";").map(s=>s.trim()).filter(Boolean).join(", "));
+    set("hint", parts[3]||"");
+    set("explanation", parts[4]||"");
+    set("firstLetter", "");
+  });
+  setEditorStatus("Filled "+parsed.length+" box"+(parsed.length===1?"":"es")+". Review them below, then choose Save questions.", false);
+});
+$("btn-ed-export").addEventListener("click", ()=>{
+  const result = collectEditorBank();
+  if (result.error){ setEditorStatus(result.error, true); return; }
+  const url = URL.createObjectURL(new Blob([JSON.stringify(result.bank,null,2)], {type:"application/json"}));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "church-quiz-questions.json";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 0);
+  setEditorStatus("Question set exported.", false);
+});
+$("btn-ed-import").addEventListener("click", ()=> $("ed-import-file").click());
+$("ed-import-file").addEventListener("change", async (event)=>{
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (file.size > 1024*1024){
+    setEditorStatus("That file is too large. Choose a question-set JSON file under 1 MB.", true);
+    event.target.value = "";
+    return;
+  }
+  try{
+    const imported = normalizeQuestionBank(JSON.parse(await file.text()));
+    if (!imported) throw new Error("invalid question set");
+    QUESTION_BANK = imported;
+    localStorage.setItem(BANK_KEY, JSON.stringify(QUESTION_BANK));
+    openEditor("Question set imported and saved on this device.");
+  }catch(e){
+    setEditorStatus("Could not import that file. Export a question set first and keep its JSON structure.", true);
+  }
+  event.target.value = "";
 });
 twoTap($("btn-ed-restore"), "Tap again to restore", ()=>{
   localStorage.removeItem(BANK_KEY);
   QUESTION_BANK = JSON.parse(JSON.stringify(DEFAULT_QUESTION_BANK));
-  openEditor(); // re-render the editor with the defaults
+  openEditor("Default questions restored.");
 });
 $("btn-pick1").addEventListener("click", ()=> setStarter(0,true));
 $("btn-pick2").addEventListener("click", ()=> setStarter(1,true));
@@ -1104,14 +1239,31 @@ function renderQuestion(){
   $("q-retry").classList.add("hidden");
   $("q-answer-in").value = a.submitted || "";
   $("q-submitted").classList.toggle("hidden", !a.submitted);
-  if (a.submitted) $("q-submitted").textContent = "Team answered: “"+a.submitted+"”";
+  if (a.submitted){
+    const matched = answerMatches(def, a.submitted);
+    $("q-submitted").textContent = "Team answered: “"+a.submitted+"” — "
+      + (matched ? "✔ matches a stored answer" : "✘ no exact match — host decides");
+    $("q-submitted").style.color = matched ? "var(--good)" : "var(--warn)";
+  }
 
   $("q-reveal").classList.toggle("hidden", !a.revealed);
   $("q-reveal-a").textContent = def.answer;
   $("q-reveal-e").textContent = def.explanation || "";
-  $("q-result").classList.add("hidden");
-  $("q-judge").classList.remove("hidden");
-  $("q-continue-row").classList.add("hidden");
+  if (a.resolved){
+    const correct = !!state.boxes[a.boxId].gotIt;
+    $("q-reveal").classList.remove("hidden");
+    $("q-result").textContent = correct
+      ? "✔ Correct — "+tm.name+" wins "+def.points+" points!"
+      : "✘ Wrong — no points this time. No steals, next team's turn.";
+    $("q-result").style.color = correct ? "var(--good)" : "var(--bad)";
+    $("q-result").classList.remove("hidden");
+    $("q-judge").classList.add("hidden");
+    $("q-continue-row").classList.remove("hidden");
+  } else {
+    $("q-result").classList.add("hidden");
+    $("q-judge").classList.remove("hidden");
+    $("q-continue-row").classList.add("hidden");
+  }
 
   // lifelines: one per team per game, usable on a returned question too;
   // Skip & Return is separate (once per team, not on an already-skipped box)

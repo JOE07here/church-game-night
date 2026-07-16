@@ -1,0 +1,15 @@
+{
+  "name": "church-game-night",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "node tests/server.mjs",
+    "test": "PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers playwright test",
+    "test:headed": "PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers playwright test --headed",
+    "test:install-browser": "PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers playwright install chromium --only-shell --no-progress"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}
