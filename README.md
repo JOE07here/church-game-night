@@ -1,9 +1,9 @@
-# Two-Team Box Quiz 📦
+# Church Game ⛪
 
-A game-show style quiz for church game nights — two teams, ten question boxes
-(100–500 points), open-ended answers, lifelines, and a host-driven flow.
+A game-show style church quiz for two teams, with ten- or twenty-box boards,
+100–500 point questions, lifelines, and a host-driven flow.
 
-**Play it live:** https://joe07here.github.io/church-game-night/
+**Play it live:** [Open Church Game](https://joe07here.github.io/church-game-night/)
 
 ## How to run
 

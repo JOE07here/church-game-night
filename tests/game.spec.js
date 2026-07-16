@@ -14,7 +14,7 @@ test("starts a 10-box game with custom team names", async ({ page }) => {
   });
 
   await openFresh(page);
-  await expect(page.getByRole("heading", { name: "📦 Two-Team Box Quiz" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "⛪ Church Game" })).toBeVisible();
   await page.getByLabel("Team 1 name").fill("Grace");
   await page.getByLabel("Team 2 name").fill("Hope");
   await page.getByRole("radio", { name: "10 boxes · 5 per team" }).check();
