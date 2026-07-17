@@ -296,7 +296,7 @@
   <section id="scr-setup" aria-label="Game setup">
     <div class="card">
       <h2>Set up the game</h2>
-      <p class="sub">Two teams · open-ended questions · the host runs the show</p>
+      <p class="sub">Two teams · 5 questions each · 3 boxes hide a secret: +100, +200 or −50</p>
       <div class="team-inputs">
         <div>
           <label for="in-team1">Team 1 name</label>
@@ -306,18 +306,6 @@
           <label for="in-team2">Team 2 name</label>
           <input id="in-team2" maxlength="24" value="Team Omega">
         </div>
-      </div>
-      <div class="toggle-row">
-        <label for="in-mystery">🎁 Mystery Rewards</label>
-        <span class="switch">
-          <input type="checkbox" id="in-mystery">
-          <span class="track"></span><span class="knob"></span>
-        </span>
-        <span class="hintline">A few boxes hide a small surprise perk (max one per team, never game-deciding).</span>
-      </div>
-      <div class="size-row" role="radiogroup" aria-label="Board size">
-        <label><input type="radio" name="boardsize" value="20" checked> 20 boxes · 10 questions per team</label>
-        <label><input type="radio" name="boardsize" value="10"> 10 boxes · 5 per team</label>
       </div>
       <p class="starter-label">🪙 Toss a real coin, then tap the winner:</p>
       <div class="btn-row">
@@ -366,7 +354,7 @@
     <div class="hostbar">
       <span class="kbdhint">Host keys during a question:
         <kbd>Space</kbd> pause · <kbd>C</kbd> correct · <kbd>W</kbd> wrong ·
-        <kbd>R</kbd> reveal · <kbd>H</kbd> hint · <kbd>E</kbd> extra time</span>
+        <kbd>R</kbd> reveal · <kbd>H</kbd> hint</span>
     </div>
   </section>
 
@@ -420,15 +408,6 @@
       <span class="qteam" id="q-team"></span>
     </div>
 
-    <!-- mystery swap decision (shown instead of the question until decided) -->
-    <div id="q-swap" class="hidden">
-      <div class="qnote gift">🎁 Mystery Reward! You may put this box back and choose a different one.</div>
-      <div class="qactions">
-        <button id="btn-swap-keep" class="btn btn-primary">Keep this box</button>
-        <button id="btn-swap-go" class="btn btn-blue">Choose another box</button>
-      </div>
-    </div>
-
     <div id="q-main">
       <div id="q-gift-note" class="qnote gift hidden"></div>
       <div id="q-timer-wrap">
@@ -438,7 +417,6 @@
       <div id="q-text"></div>
       <div id="q-timeup" class="qnote timeup hidden" role="alert">⏰ Time's up — host decides: correct or wrong.</div>
       <div id="q-hint" class="qnote hint hidden"></div>
-      <div id="q-retry" class="qnote gift hidden">🎁 Second attempt! 20 seconds on the clock.</div>
 
       <div class="hostanswer">
         <input id="q-answer-in" placeholder="Type the team's answer (optional)" aria-label="Team's spoken answer">
@@ -465,12 +443,9 @@
       </div>
 
       <div class="lifelines" id="q-lifelines">
-        <span class="lbl">Lifelines: one per team per game · Skip &amp; Return: once per team, doesn't use your lifeline</span>
-        <button class="llbtn" id="ll-time">⏱ Extra time +30s</button>
+        <span class="lbl">Lifelines — one per team for the whole game</span>
         <button class="llbtn" id="ll-hint">💡 Hint</button>
-        <button class="llbtn" id="ll-first">🔤 First letter</button>
-        <button class="llbtn" id="ll-skip">⏭ Skip &amp; return</button>
-        <button class="llbtn hidden" id="ll-gift-hint">🎁 Mystery hint</button>
+        <button class="llbtn" id="ll-first">🔤 First 2 letters</button>
       </div>
     </div>
   </div>
@@ -483,9 +458,8 @@
       <h2 id="editor-title">✏️ Question setup</h2>
       <span class="qteam">custom question set</span>
     </div>
-    <p class="editor-note">Type directly into any box below. Boxes A &amp; B play on the 10-box board;
-      C &amp; D join on the 20-box board. Accepted answers are comma-separated. Leave "first letter"
-      blank to use the answer's first letter.</p>
+    <p class="editor-note">Type directly into any box below. Only boxes A &amp; B appear on the board —
+      C &amp; D are spares kept for imports and backups. Accepted answers are comma-separated.</p>
     <div class="editor-tools">
       <details id="bulk-question-entry">
         <summary>Quick-paste several questions</summary>
@@ -821,13 +795,16 @@ function sortForDisplay(defs){
   });
 }
 
-function freshState(names, starter, mysteryOn, boardSize, isDemo){
+function freshState(names, starter, isDemo){
+  const boardSize = isDemo ? 6 : 10;
   const defs = activeBoxDefs(boardSize, isDemo ? DEMO_QUESTION_BANK : QUESTION_BANK);
   const boxes = {};
   defs.forEach(b => boxes[b.id] = { status:"unopened", pendingTeam:null, usedBy:null, gotIt:null });
-  let mysteryBoxes = [];
-  if (mysteryOn && !isDemo){
-    mysteryBoxes = shuffle(defs.map(b=>b.id)).slice(0, boardSize >= 20 ? 4 : 3);
+  // three hidden special boxes: +100, +200 and −50 points (real games only)
+  const specialBoxes = {};
+  if (!isDemo){
+    const picks = shuffle(defs.map(b=>b.id)).slice(0, 3);
+    shuffle([100, 200, -50]).forEach((v,i)=> specialBoxes[picks[i]] = v);
   }
   return {
     phase:"board",
@@ -836,11 +813,10 @@ function freshState(names, starter, mysteryOn, boardSize, isDemo){
     perTeam: defs.length/2,               // questions each team must answer
     order: sortForDisplay(defs).map(b=>b.id),
     teams: names.map(n => ({
-      name:n, score:0, opened:0, resolved:0,
-      lifelineUsed:false, skipUsed:false, mysteryGot:false, extraHints:0
+      name:n, score:0, opened:0, resolved:0, lifelineUsed:false
     })),
     currentTeam: starter,
-    boxes, mysteryEnabled:mysteryOn, mysteryBoxes,
+    boxes, specialBoxes,
     active:null,          // runtime question info (persisted so refresh mid-question survives)
     history:[],           // undo snapshots
     tossWinner: starter
@@ -968,7 +944,7 @@ $("btn-tails").addEventListener("click", ()=> callToss(1));
    Never persisted, never touches the real save or the question bank.
    ================================================================ */
 $("btn-demo").addEventListener("click", ()=>{
-  state = freshState(["Demo Team A","Demo Team B"], 0, false, 6, true);
+  state = freshState(["Demo Team A","Demo Team B"], 0, true);
   showScreen("board");
   renderBoard();
 });
@@ -1004,7 +980,6 @@ function openEditor(statusMessage){
       + '<label>Answer <input data-f="answer" data-i="'+i+'" value="'+esc(b.answer)+'"></label>'
       + '<label>Accepted answers (comma-separated) <input data-f="acceptedAnswers" data-i="'+i+'" value="'+esc((b.acceptedAnswers||[]).join(", "))+'"></label>'
       + '<label>Hint <input data-f="hint" data-i="'+i+'" value="'+esc(b.hint||"")+'"></label>'
-      + '<label>First letter <input data-f="firstLetter" data-i="'+i+'" maxlength="3" value="'+esc(b.firstLetter||"")+'"></label>'
       + '<label class="wide">Explanation (optional) <textarea data-f="explanation" data-i="'+i+'">'+esc(b.explanation||"")+'</textarea></label>'
       + '</div>';
     list.appendChild(d);
@@ -1056,10 +1031,9 @@ $("btn-ed-save").addEventListener("click", ()=>{
 $("btn-ed-apply-bulk").addEventListener("click", ()=>{
   const lines = $("ed-bulk").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   if (!lines.length){ setEditorStatus("Paste at least one question first.", true); return; }
-  const boardSize = parseInt(document.querySelector('input[name="boardsize"]:checked').value, 10);
-  const targets = sortForDisplay(activeBoxDefs(boardSize));
+  const targets = sortForDisplay(activeBoxDefs(10));
   if (lines.length > targets.length){
-    setEditorStatus("The selected "+boardSize+"-box board accepts at most "+targets.length+" pasted questions.", true);
+    setEditorStatus("The board accepts at most "+targets.length+" pasted questions.", true);
     return;
   }
   const parsed = [];
@@ -1082,7 +1056,6 @@ $("btn-ed-apply-bulk").addEventListener("click", ()=>{
     set("acceptedAnswers", (parts[2]||"").split(";").map(s=>s.trim()).filter(Boolean).join(", "));
     set("hint", parts[3]||"");
     set("explanation", parts[4]||"");
-    set("firstLetter", "");
   });
   setEditorStatus("Filled "+parsed.length+" box"+(parsed.length===1?"":"es")+". Review them below, then choose Save questions.", false);
 });
@@ -1143,8 +1116,7 @@ refreshPickLabels();
 $("btn-start").addEventListener("click", ()=>{
   const n1 = $("in-team1").value.trim()||"Team 1";
   const n2 = $("in-team2").value.trim()||"Team 2";
-  const boardSize = parseInt(document.querySelector('input[name="boardsize"]:checked').value, 10);
-  state = freshState([n1,n2], tossStarter, $("in-mystery").checked, boardSize);
+  state = freshState([n1,n2], tossStarter, false);
   save();
   showScreen("board");
   renderBoard();
@@ -1173,10 +1145,6 @@ function renderBoard(){
     meta.innerHTML = "";
     meta.appendChild(badge("Questions "+tm.resolved+"/"+state.perTeam, ""));
     meta.appendChild(badge(tm.lifelineUsed ? "Lifeline used" : "Lifeline ✓", tm.lifelineUsed ? "off" : "ok"));
-    meta.appendChild(badge(tm.skipUsed ? "Skip used" : "Skip ✓", tm.skipUsed ? "off" : "ok"));
-    if (state.mysteryEnabled && tm.mysteryGot) meta.appendChild(badge("🎁 Mystery claimed","gift"));
-    if (tm.extraHints>0) meta.appendChild(badge("🎁 Extra hint ×"+tm.extraHints,"gift"));
-    if (pendingBoxFor(t)) meta.appendChild(badge("⏳ Pending: "+pendingBoxFor(t).replace(/([AB])$/," $1"),"gift"));
   });
 
   // score-pop animation for the last awarded points
@@ -1286,40 +1254,24 @@ function openQuestion(boxId, isPending){
     boxId, team, isPending: !!isPending,
     timeLeft: timerFor(def.points),
     running: false, revealed: false, resolved: false,
-    submitted: null, perk: null, retryUsed: false,
-    hintShown: false, timeUp: false, awaitSwap: false
+    submitted: null, special: null,
+    hintShown: false, timeUp: false
   };
 
-  // Mystery reward?
-  if (!isPending && state.mysteryEnabled && state.mysteryBoxes.includes(boxId) && !state.teams[team].mysteryGot){
-    state.mysteryBoxes = state.mysteryBoxes.filter(b=>b!==boxId);
-    state.teams[team].mysteryGot = true;
-    const perks = ["time","hint","retry","points","swap"];
-    const perk = perks[Math.floor(Math.random()*perks.length)];
-    state.active.perk = perk;
-    sfx.gift();
-    if (perk==="time")   state.active.timeLeft += 20;
-    if (perk==="points") state.teams[team].score += 50;
-    if (perk==="hint")   state.teams[team].extraHints += 1;
-    if (perk==="swap")   state.active.awaitSwap = true;
+  // Special box? Reveal it and apply the points immediately.
+  if (state.specialBoxes && state.specialBoxes[boxId] !== undefined){
+    const delta = state.specialBoxes[boxId];
+    delete state.specialBoxes[boxId];
+    state.teams[team].score = Math.max(0, state.teams[team].score + delta);
+    state.active.special = delta;
+    if (delta > 0) sfx.gift(); else sfx.wrong();
   } else {
     sfx.open();
   }
 
   save();
   renderQuestion();
-  if (!state.active.awaitSwap) startTimer();
-}
-
-function perkNote(p){
-  switch(p){
-    case "time":   return "🎁 Mystery Reward: +20 seconds added to this question!";
-    case "hint":   return "🎁 Mystery Reward: a free extra hint (button below — doesn't use your lifeline).";
-    case "retry":  return "🎁 Mystery Reward: one second attempt if your first answer is wrong!";
-    case "points": return "🎁 Mystery Reward: 50 points added to your score!";
-    case "swap":   return null; // handled by the swap panel
-  }
-  return null;
+  startTimer();
 }
 
 function renderQuestion(){
@@ -1330,18 +1282,17 @@ function renderQuestion(){
   $("q-value").textContent = def.points + " points" + (a.isPending ? " · returned question" : "");
   $("q-team").textContent = tm.name + "'s question";
 
-  const swapping = a.awaitSwap;
-  $("q-swap").classList.toggle("hidden", !swapping);
-  $("q-main").classList.toggle("hidden", swapping);
-
-  const note = perkNote(a.perk);
-  $("q-gift-note").classList.toggle("hidden", !note);
-  if (note) $("q-gift-note").textContent = note;
+  const sp = a.special;
+  $("q-gift-note").classList.toggle("hidden", sp == null);
+  if (sp != null){
+    $("q-gift-note").textContent = sp > 0
+      ? "💰 Special box! +"+sp+" points added to your score — now answer the question."
+      : "💥 Special box! "+sp+" points (your score never drops below zero) — now answer the question.";
+  }
 
   $("q-text").textContent = def.question;
   $("q-timeup").classList.toggle("hidden", !a.timeUp);
   $("q-hint").classList.toggle("hidden", !a.hintShown);
-  $("q-retry").classList.add("hidden");
   $("q-answer-in").value = a.submitted || "";
   $("q-submitted").classList.toggle("hidden", !a.submitted);
   if (a.submitted){
@@ -1370,12 +1321,9 @@ function renderQuestion(){
     $("q-continue-row").classList.add("hidden");
   }
 
-  // lifelines: one per team per game, usable on a returned question too;
-  // Skip & Return is separate (once per team, not on an already-skipped box)
+  // lifelines: one per team for the whole game
   const canLL = !tm.lifelineUsed && !a.resolved;
-  ["ll-time","ll-hint","ll-first"].forEach(id=> $(id).disabled = !canLL);
-  $("ll-skip").disabled = tm.skipUsed || a.isPending || a.resolved;
-  $("ll-gift-hint").classList.toggle("hidden", !(tm.extraHints>0 && !a.hintShown && !a.resolved));
+  ["ll-hint","ll-first"].forEach(id=> $(id).disabled = !canLL);
   $("q-lifelines").classList.toggle("hidden", a.resolved);
 
   updateTimerDisplay();
@@ -1472,17 +1420,6 @@ $("btn-wrong").addEventListener("click", ()=> judge(false));
 function judge(correct){
   const a = state.active; if (!a || a.resolved) return;
 
-  // mystery second attempt
-  if (!correct && a.perk==="retry" && !a.retryUsed){
-    a.retryUsed = true;
-    a.timeLeft = 20; a.timeUp = false; a.barMax = 20;
-    $("q-timeup").classList.add("hidden");
-    $("q-retry").classList.remove("hidden");
-    sfx.gift();
-    startTimer(); updateTimerDisplay(); save();
-    return;
-  }
-
   a.resolved = true;
   stopTimer();
   const def = boxDef(a.boxId);
@@ -1523,55 +1460,22 @@ function advanceTurn(){
   renderBoard();
 }
 
-/* ---- lifelines ---- */
-$("ll-time").addEventListener("click", ()=> useLifeline("time"));
+/* ---- lifelines: Hint or First 2 Letters — one per team per game ---- */
 $("ll-hint").addEventListener("click", ()=> useLifeline("hint"));
 $("ll-first").addEventListener("click", ()=> useLifeline("first"));
-$("ll-skip").addEventListener("click", ()=> useLifeline("skip"));
-$("ll-gift-hint").addEventListener("click", ()=>{
-  const a = state.active; if (!a || a.resolved) return;
-  const tm = state.teams[a.team];
-  if (tm.extraHints<=0) return;
-  tm.extraHints--;
-  showHint("🎁 Mystery hint: " + boxDef(a.boxId).hint);
-});
 
 function useLifeline(kind){
   const a = state.active; if (!a || a.resolved) return;
   const tm = state.teams[a.team];
   const def = boxDef(a.boxId);
-
-  if (kind==="skip"){
-    // Skip & Return is its own once-per-team ability — it does NOT use the
-    // lifeline. The question parks in the pending area; the same team may
-    // answer it on any later turn (and must, before the game can end).
-    if (tm.skipUsed || a.isPending) return;
-    tm.skipUsed = true;
-    stopTimer();
-    state.boxes[a.boxId].status = "pending";
-    state.boxes[a.boxId].pendingTeam = a.team;
-    state.active = null;
-    $("q-overlay").classList.add("hidden");
-    // same team's turn ends for now — normal alternation continues
-    const other = 1 - state.currentTeam;
-    if (!teamDone(other)) state.currentTeam = other;
-    save();
-    renderBoard();
-    return;
-  }
-
-  // Extra Time / Hint / First Letter: one per team for the whole game,
-  // usable on any of the team's questions — including a returned one.
   if (tm.lifelineUsed) return;
   tm.lifelineUsed = true;
-  if (kind==="time"){
-    a.timeLeft += 30;
-    if (a.timeUp){ a.timeUp=false; $("q-timeup").classList.add("hidden"); startTimer(); }
-    updateTimerDisplay();
-  }
   if (kind==="hint")  showHint("💡 Hint: " + def.hint);
-  if (kind==="first") showHint("🔤 The answer starts with “" + (def.firstLetter || def.answer.replace(/^["“]/,"").charAt(0).toUpperCase()) + "”");
-  ["ll-time","ll-hint","ll-first"].forEach(id=> $(id).disabled = true);
+  if (kind==="first"){
+    const two = def.answer.replace(/^["“]/,"").trim().slice(0,2);
+    showHint("🔤 The answer starts with “" + two + "…”");
+  }
+  ["ll-hint","ll-first"].forEach(id=> $(id).disabled = true);
   save();
 }
 function showHint(text){
@@ -1581,29 +1485,6 @@ function showHint(text){
   $("q-hint").classList.remove("hidden");
   save();
 }
-
-/* ---- mystery swap decision ---- */
-$("btn-swap-keep").addEventListener("click", ()=>{
-  const a = state.active; if (!a) return;
-  a.awaitSwap = false;
-  a.perk = "kept"; // reward consumed by choosing to keep? No — keeping means no perk beyond the choice itself.
-  $("q-gift-note").classList.add("hidden");
-  renderQuestion();
-  startTimer();
-  save();
-});
-$("btn-swap-go").addEventListener("click", ()=>{
-  const a = state.active; if (!a) return;
-  // put the box back, un-count the pick, let the same team choose again
-  state.boxes[a.boxId].status = "unopened";
-  state.teams[a.team].opened--;
-  state.active = null;
-  // remove the snapshot made when this box was opened (nothing to undo)
-  state.history.pop();
-  $("q-overlay").classList.add("hidden");
-  save();
-  renderBoard();
-});
 
 /* ================================================================
    END GAME / RESULTS / TIE-BREAKER
@@ -1687,9 +1568,7 @@ function tbWin(t){
 
 $("btn-rematch").addEventListener("click", ()=>{
   const names = state.teams.map(t=>t.name);
-  const mystery = state.mysteryEnabled;
-  const boardSize = state.boardSize || 10;
-  state = freshState(names, Math.random()<0.5?0:1, mystery, boardSize, state.isDemo);
+  state = freshState(names, Math.random()<0.5?0:1, state.isDemo);
   save();
   showScreen("board");
   renderBoard();
@@ -1810,7 +1689,7 @@ document.addEventListener("keydown", (e)=>{
     if (e.key==="Escape") $("editor-overlay").classList.add("hidden");
     return;
   }
-  const qOpen = !$("q-overlay").classList.contains("hidden") && state && state.active && !state.active.awaitSwap;
+  const qOpen = !$("q-overlay").classList.contains("hidden") && state && state.active;
   if (!qOpen) return;
   const a = state.active;
   switch(e.key){
@@ -1819,7 +1698,6 @@ document.addEventListener("keydown", (e)=>{
     case "w": case "W": if (!a.resolved) judge(false); break;
     case "r": case "R": revealAnswer(); break;
     case "h": case "H": if (!$("ll-hint").disabled) useLifeline("hint"); break;
-    case "e": case "E": if (!$("ll-time").disabled) useLifeline("time"); break;
     case "Escape": /* no accidental closes during a live question */ break;
   }
 });

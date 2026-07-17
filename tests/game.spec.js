@@ -17,7 +17,6 @@ test("starts a 10-box game with custom team names", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "📦 Two-Team Box Quiz" })).toBeVisible();
   await page.getByLabel("Team 1 name").fill("Grace");
   await page.getByLabel("Team 2 name").fill("Hope");
-  await page.getByRole("radio", { name: "10 boxes · 5 per team" }).check();
   await page.getByRole("button", { name: "▶ Start game" }).click();
 
   await expect(page.getByRole("gridcell")).toHaveCount(10);
@@ -29,7 +28,6 @@ test("starts a 10-box game with custom team names", async ({ page }) => {
 
 test("quick-pastes, saves, and plays manual questions", async ({ page }) => {
   await openFresh(page);
-  await page.getByRole("radio", { name: "10 boxes · 5 per team" }).check();
   await page.getByRole("button", { name: "✏️ Add or edit questions" }).click();
   await page.locator("#bulk-question-entry summary").click();
   await page.getByLabel("Questions to quick-paste").fill([
@@ -44,7 +42,6 @@ test("quick-pastes, saves, and plays manual questions", async ({ page }) => {
   await page.getByRole("button", { name: "💾 Save questions" }).click();
 
   await page.reload();
-  await page.getByRole("radio", { name: "10 boxes · 5 per team" }).check();
   await page.getByRole("button", { name: "▶ Start game" }).click();
   await page.getByRole("gridcell", { name: "Open box 100 A" }).click();
   await expect(page.getByRole("dialog")).toContainText("What is the first Greek letter?");
@@ -55,8 +52,9 @@ test("quick-pastes, saves, and plays manual questions", async ({ page }) => {
 
 test("recovers after reload between judging and continuing", async ({ page }) => {
   await openFresh(page);
-  await page.getByRole("radio", { name: "10 boxes · 5 per team" }).check();
   await page.getByRole("button", { name: "▶ Start game" }).click();
+  // neutralize the random special boxes so the score assertion is deterministic
+  await page.evaluate(() => { state.specialBoxes = {}; save(); });
   await page.getByRole("gridcell", { name: "Open box 100 A" }).click();
   await page.getByRole("button", { name: "✔ Correct" }).click();
   await expect(page.locator("#q-result")).toContainText("Team Alpha wins 100 points");
@@ -74,7 +72,6 @@ test("recovers after reload between judging and continuing", async ({ page }) =>
 test("keeps the board within a narrow mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await openFresh(page);
-  await page.getByRole("radio", { name: "10 boxes · 5 per team" }).check();
   await page.getByRole("button", { name: "▶ Start game" }).click();
 
   const layout = await page.evaluate(() => ({

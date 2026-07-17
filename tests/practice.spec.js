@@ -53,23 +53,26 @@ test.describe('Practice mode', () => {
     await expect(page.locator('#turn-banner')).toContainText('Demo Team B');
   });
 
-  test('lifelines, skip & return, and undo work in practice', async ({ page }) => {
+  test('lifelines and undo work in practice', async ({ page }) => {
     await freshPage(page);
     await page.click('#btn-demo');
-    // Demo Team A: hint lifeline on 100A
+    // Demo Team A: hint lifeline on 100A; using it disables the other lifeline
     await page.click('#board-grid .tile:first-child');
     await page.click('#ll-hint');
     await expect(page.locator('#q-hint')).toContainText('grass');
+    await expect(page.locator('#ll-first')).toBeDisabled();
     await page.click('#btn-correct');
     await page.click('#btn-continue');
-    // Demo Team B: skip & return, then the pending box is theirs to reopen
+    await expect(page.locator('#tc-0 .tscore')).toHaveText('100');
+    // Demo Team B: first-2-letters lifeline on its own question (Paris)
     await page.locator('#board-grid .tile:not([disabled])').first().click();
-    await page.click('#ll-skip');
-    await expect(page.locator('#board-grid .tile.pending')).toHaveCount(1);
-    await expect(page.locator('#tc-1 .tmeta')).toContainText('Skip used');
-    // Undo reverses the last opened question (back to Team B's skip snapshot)
+    await page.click('#ll-first');
+    await expect(page.locator('#q-hint')).toContainText('Pa');
+    await page.click('#btn-wrong');
+    await page.click('#btn-continue');
+    // Undo reverses Demo Team B's whole question, restoring its lifeline
     await page.click('#btn-undo');
-    await expect(page.locator('#board-grid .tile.pending')).toHaveCount(0);
+    await expect(page.locator('#tc-1 .tmeta')).toContainText('Lifeline ✓');
   });
 
   test('exit practice returns safely to the setup screen', async ({ page }) => {
@@ -103,10 +106,10 @@ test.describe('Practice mode', () => {
 });
 
 test.describe('Real game regression', () => {
-  test('20-box game starts with real questions and real timers', async ({ page }) => {
+  test('10-box game starts with real questions and real timers', async ({ page }) => {
     await freshPage(page);
     await page.click('#btn-start');
-    await expect(page.locator('#board-grid .tile')).toHaveCount(20);
+    await expect(page.locator('#board-grid .tile')).toHaveCount(10);
     await expect(page.locator('#practice-banner')).toBeHidden();
     await page.click('#board-grid .tile:first-child');
     await expect(page.locator('#q-text')).toContainText('ark'); // real 100A question
@@ -114,15 +117,33 @@ test.describe('Real game regression', () => {
     expect(['0:30', '0:29', '0:28']).toContain(t); // real 100-point timer
   });
 
-  test('10-box game starts, scores, and switches turns', async ({ page }) => {
+  test('10-box game scores and switches turns', async ({ page }) => {
     await freshPage(page);
-    await page.check('input[name="boardsize"][value="10"]');
     await page.click('#btn-start');
     await expect(page.locator('#board-grid .tile')).toHaveCount(10);
+    // neutralize the random special boxes so the score assertion is deterministic
+    await page.evaluate(() => { state.specialBoxes = {}; save(); });
     await page.click('#board-grid .tile:first-child');
     await page.click('#btn-correct');
     await page.click('#btn-continue');
     await expect(page.locator('#tc-0 .tscore')).toHaveText('100');
     await expect(page.locator('#turn-banner')).toContainText('pick a box');
+  });
+
+  test('special boxes award or deduct points when opened', async ({ page }) => {
+    await freshPage(page);
+    await page.click('#btn-start');
+    const info = await page.evaluate(() => {
+      const id = Object.keys(state.specialBoxes)[0];
+      return { id, delta: state.specialBoxes[id] };
+    });
+    expect([100, 200, -50]).toContain(info.delta);
+    await page.getByRole('gridcell', { name: 'Open box ' + info.id.replace(/(A|B)$/, ' $1') }).click();
+    await expect(page.locator('#q-gift-note')).toBeVisible();
+    await expect(page.locator('#q-gift-note')).toContainText('Special box');
+    await page.click('#btn-wrong');
+    await page.click('#btn-continue');
+    // wrong answer adds nothing, so the score is exactly the special delta (clamped at zero)
+    await expect(page.locator('#tc-0 .tscore')).toHaveText(String(Math.max(0, info.delta)));
   });
 });

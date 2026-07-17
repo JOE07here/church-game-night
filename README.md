@@ -19,8 +19,8 @@ above and project it on a big screen.
 ## Features
 
 - Value-based countdown timers (30–75s) with pause, ±10s, and a final-10-seconds warning
-- One lifeline per team: Extra Time, Hint, First Letter, or Skip & Return
-- Optional Mystery Rewards (small perks, max one per team)
+- One lifeline per team for the whole game: Hint or First 2 Letters
+- Three secret special boxes hide +100, +200 and −50 points (scores never drop below zero)
 - Score animations, confetti finale, and a host-configurable tie-breaker
 - Undo, manual score adjust, and two-tap confirmations for destructive actions
 - Auto-save to localStorage — refreshing mid-game offers Continue / New Game
@@ -35,7 +35,7 @@ three per team), short timers (10/15/20 seconds), sample teams *Demo Team A*
 and *Demo Team B*, and its own demo tie-breaker. A striped **PRACTICE MODE**
 banner stays visible the whole time, with an **Exit practice** button that
 returns to the setup screen. Every host control works exactly like the real
-game — lifelines, Skip & Return, undo, score adjust, tie-breaker — but nothing
+game — lifelines, undo, score adjust, tie-breaker — but nothing
 is saved: your real saved game, custom questions, and settings are untouched.
 
 ## Edit the questions
