@@ -1,7 +1,7 @@
 # Church Game ⛪
 
-A game-show style church quiz for two teams, with ten- or twenty-box boards,
-100–500 point questions, lifelines, and a host-driven flow.
+A game-show style church quiz for two teams — ten question boxes worth
+100–500 points, three secret special boxes, lifelines, and a host-driven flow.
 
 **Play it live:** [Open Church Game](https://joe07here.github.io/church-game-night/)
 
