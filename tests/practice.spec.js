@@ -35,7 +35,7 @@ test.describe('Practice mode', () => {
     await page.click('#btn-demo');
     await page.click('#board-grid .tile:first-child'); // 100 A in display order
     await expect(page.locator('#q-text')).toContainText('blue and yellow');
-    await expect(page.locator('#q-text')).not.toContainText('ark');
+    await expect(page.locator('#q-text')).not.toContainText('Enoch');
     const t = (await page.locator('#q-time').textContent()).trim();
     expect(['0:10', '0:09', '0:08']).toContain(t); // 10s demo timer, allow ticks
   });
@@ -112,7 +112,7 @@ test.describe('Real game regression', () => {
     await expect(page.locator('#board-grid .tile')).toHaveCount(10);
     await expect(page.locator('#practice-banner')).toBeHidden();
     await page.click('#board-grid .tile:first-child');
-    await expect(page.locator('#q-text')).toContainText('ark'); // real 100A question
+    await expect(page.locator('#q-text')).toContainText('Enoch'); // real 100A question
     const t = (await page.locator('#q-time').textContent()).trim();
     expect(['0:30', '0:29', '0:28']).toContain(t); // real 100-point timer
   });

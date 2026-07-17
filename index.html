@@ -192,8 +192,8 @@
     border:1px solid var(--border); margin-top:6px;}
   .tbar > div{height:100%; background:var(--good); width:100%; transition:width 1s linear, background .3s;}
   .tbar > div.low{background:var(--bad);}
-  #q-text{font-size:clamp(1.25rem,3vw,1.9rem); font-weight:800; line-height:1.35;
-    text-align:center; margin:14px 0 18px; min-height:2.4em;}
+  #q-text{font-size:clamp(1.25rem,3vw,1.9rem); font-weight:800; line-height:1.45;
+    text-align:center; margin:14px 0 18px; min-height:2.4em; white-space:pre-line;}
   .qnote{background:var(--panel2); border:1px dashed var(--border); border-radius:12px;
     padding:10px 14px; margin:10px 0; font-weight:700; text-align:center;}
   .qnote.gift{border-color:var(--warn); color:var(--warn);}
@@ -227,7 +227,7 @@
   .fscore .n{font-weight:800; color:var(--muted);}
   .fscore .s{font-size:2rem; font-weight:900; color:var(--accent);}
   #scr-tiebreak textarea{width:100%; min-height:70px; margin-bottom:10px; resize:vertical;}
-  #tb-question-display{font-size:1.5rem; font-weight:900; margin:18px 0;}
+  #tb-question-display{font-size:1.5rem; font-weight:900; margin:18px 0; white-space:pre-line;}
   #tb-answer-display{color:var(--good); font-weight:800; margin-bottom:16px;}
 
   /* confetti */
@@ -523,19 +523,19 @@
 const DEFAULT_QUESTION_BANK = {
   boxes: [
     { id:"100A", points:100,
-      question:"Who built the ark that saved his family from the flood?",
-      answer:"Noah",
-      acceptedAnswers:["Noe"],
-      hint:"He had three sons: Shem, Ham and Japheth.",
-      firstLetter:"N",
-      explanation:"Genesis 6–9 — God told Noah to build the ark before sending the flood." },
+      question:"Who built a city and named it Enoch?\nഹാനോക്ക് എന്നു പേരിട്ട് ഒരു പട്ടണം പണിതത് ആര്?",
+      answer:"Cain · കയീൻ",
+      acceptedAnswers:["Cain","കയീൻ","Kain","Cayin"],
+      hint:"He named the city after his son — and he had killed his own brother.",
+      firstLetter:"C",
+      explanation:"Genesis 4:17 — Cain built a city and named it after his son Enoch." },
     { id:"100B", points:100,
-      question:"In which town was Jesus born?",
-      answer:"Bethlehem",
-      acceptedAnswers:["Bethlehem of Judea"],
-      hint:"It is also called the City of David.",
-      firstLetter:"B",
-      explanation:"Luke 2:4–7 — foretold by the prophet Micah (Micah 5:2)." },
+      question:"Who was the father of James and John?\nയാക്കോബിന്റെയും യോഹന്നാന്റെയും പിതാവ് ആരായിരുന്നു?",
+      answer:"Zebedee · സെബെദി",
+      acceptedAnswers:["Zebedee","സെബെദി","Zebedi","Zebadee"],
+      hint:"The two brothers left their fishing boat — and their father — to follow Jesus.",
+      firstLetter:"Z",
+      explanation:"Matthew 4:21 — James and John were in the boat with their father Zebedee, mending their nets." },
     { id:"100C", points:100,
       question:"How many days and nights did it rain during the great flood?",
       answer:"Forty",
@@ -551,19 +551,19 @@ const DEFAULT_QUESTION_BANK = {
       firstLetter:"A",
       explanation:"Genesis 2:7 — God breathed into him the breath of life." },
     { id:"200A", points:200,
-      question:"Which prophet was swallowed by a great fish after running away from God?",
-      answer:"Jonah",
-      acceptedAnswers:["Jonas"],
-      hint:"He boarded a ship headed for Tarshish instead of going to Nineveh.",
-      firstLetter:"J",
-      explanation:"Jonah 1:17 — he spent three days and three nights inside the fish." },
+      question:"Who hid one hundred prophets in two caves and supplied them with bread and water?\nനൂറ് പ്രവാചകന്മാരെ അമ്പത് പേർ വീതം രണ്ട് ഗുഹകളിൽ ഒളിപ്പിച്ച് അപ്പവും വെള്ളവും നൽകി സംരക്ഷിച്ചത് ആര്?",
+      answer:"Obadiah · ഓബദ്യാവ്",
+      acceptedAnswers:["Obadiah","ഓബദ്യാവ്","Obadia","Obadya","Obediah"],
+      hint:"He was in charge of King Ahab's palace and feared the LORD greatly.",
+      firstLetter:"O",
+      explanation:"1 Kings 18:3–4, 13 — he hid them fifty to a cave from Jezebel and kept them fed." },
     { id:"200B", points:200,
-      question:"What two things did David use to defeat Goliath?",
-      answer:"A sling and a stone",
-      acceptedAnswers:["Sling and stone","A sling and stone","Sling and a stone","Slingshot and stone"],
-      hint:"He picked five smooth stones from the stream but needed only one.",
-      firstLetter:"S",
-      explanation:"1 Samuel 17 — David refused Saul's armour and trusted God instead." },
+      question:"What was the name of the young man who fell from the third floor while Paul was speaking?\nപൗലോസ് പ്രസംഗിച്ചുകൊണ്ടിരിക്കുമ്പോൾ മൂന്നാം നിലയിൽനിന്ന് വീണ യുവാവിന്റെ പേര് എന്തായിരുന്നു?",
+      answer:"Eutychus · യൂത്തിക്കൊസ്",
+      acceptedAnswers:["Eutychus","യൂത്തിക്കൊസ്","Eutychos","Eutikos","Yuthikos"],
+      hint:"His name means 'fortunate' — fitting, because Paul restored his life.",
+      firstLetter:"E",
+      explanation:"Acts 20:9 — he sank into deep sleep at a window in Troas; Paul embraced him and he lived." },
     { id:"200C", points:200,
       question:"What food fell from heaven to feed the Israelites in the desert?",
       answer:"Manna",
@@ -579,19 +579,19 @@ const DEFAULT_QUESTION_BANK = {
       firstLetter:"P",
       explanation:"Luke 22:54–62 — he wept bitterly when the rooster crowed." },
     { id:"300A", points:300,
-      question:"Who interpreted Pharaoh's dreams and became second-in-command over Egypt?",
-      answer:"Joseph",
-      acceptedAnswers:["Josef"],
-      hint:"His jealous brothers sold him, and he once wore a famous colourful coat.",
-      firstLetter:"J",
-      explanation:"Genesis 41 — the dreams foretold seven years of plenty and seven of famine." },
+      question:"How old was Isaac when he died?\nയിസ്ഹാക്ക് മരിക്കുമ്പോൾ എത്ര വയസ്സായിരുന്നു?",
+      answer:"180 years · 180 വയസ്സ്",
+      acceptedAnswers:["180","180 years","180 വയസ്സ്","One hundred and eighty","One hundred eighty"],
+      hint:"He lived five years longer than his father Abraham.",
+      firstLetter:"1",
+      explanation:"Genesis 35:28–29 — Isaac lived 180 years and was buried by his sons Esau and Jacob." },
     { id:"300B", points:300,
-      question:"On which mountain did Moses receive the Ten Commandments?",
-      answer:"Mount Sinai",
-      acceptedAnswers:["Sinai","Mt Sinai","Horeb","Mount Horeb"],
-      hint:"The mountain is also called Horeb in some passages.",
-      firstLetter:"S",
-      explanation:"Exodus 19–20 — the covenant was given there after the exodus from Egypt." },
+      question:"Where did Absalom flee to and stay?\nഅബ്ശാലോം ഓടിപ്പോയി താമസിച്ചത് എവിടെയാണ്?",
+      answer:"Geshur · ഗെശൂർ",
+      acceptedAnswers:["Geshur","ഗെശൂർ","Gesur","Geshoor"],
+      hint:"He went to his mother's father Talmai, king of a small Aramean kingdom.",
+      firstLetter:"G",
+      explanation:"2 Samuel 13:38 — Absalom fled to Geshur and stayed there three years." },
     { id:"300C", points:300,
       question:"Which queen travelled to test King Solomon with hard questions?",
       answer:"The Queen of Sheba",
@@ -607,19 +607,19 @@ const DEFAULT_QUESTION_BANK = {
       firstLetter:"J",
       explanation:"Matthew 3:13 — the Spirit descended like a dove as he came up." },
     { id:"400A", points:400,
-      question:"Which apostle worked as a tax collector before following Jesus?",
-      answer:"Matthew",
-      acceptedAnswers:["Levi","Saint Matthew","St Matthew"],
-      hint:"He is also called Levi, and a Gospel bears his name.",
-      firstLetter:"M",
-      explanation:"Matthew 9:9 — Jesus said 'Follow me', and he left his tax booth at once." },
+      question:"Which city did Joshua burn?\nയോശുവ ചുട്ടുകളഞ്ഞ പട്ടണം ഏതാണ്?",
+      answer:"Hazor · ഹാസോർ",
+      acceptedAnswers:["Hazor","ഹാസോർ","Hasor","Hatzor"],
+      hint:"It had been the head of all those northern kingdoms.",
+      firstLetter:"H",
+      explanation:"Joshua 11:13 — of the cities standing on their mounds, Israel burned Hazor alone." },
     { id:"400B", points:400,
-      question:"What is the shortest verse in the English Bible?",
-      answer:"\"Jesus wept.\" (John 11:35)",
-      acceptedAnswers:["Jesus wept","John 11:35"],
-      hint:"It happens at the tomb of Lazarus.",
-      firstLetter:"J",
-      explanation:"Two words showing Jesus' compassion just before raising Lazarus." },
+      question:"Where did Sihon, king of the Amorites, reign?\nഅമോര്യരുടെ രാജാവായ സീഹോൻ എവിടെയാണ് വാണിരുന്നത്?",
+      answer:"Heshbon · ഹെശ്ബോൻ",
+      acceptedAnswers:["Heshbon","ഹെശ്ബോൻ","Hesbon","Hesban"],
+      hint:"This royal city later belonged to the tribe of Reuben.",
+      firstLetter:"H",
+      explanation:"Joshua 12:2 — Sihon, king of the Amorites, lived in Heshbon." },
     { id:"400C", points:400,
       question:"Which two cities did God destroy with burning sulfur in the book of Genesis?",
       answer:"Sodom and Gomorrah",
@@ -635,19 +635,19 @@ const DEFAULT_QUESTION_BANK = {
       firstLetter:"D",
       explanation:"Acts 9 — Saul became Paul, the great missionary apostle." },
     { id:"500A", points:500,
-      question:"Which Old Testament prophet was taken up to heaven in a whirlwind, with chariots of fire appearing?",
-      answer:"Elijah",
-      acceptedAnswers:["Elias"],
-      hint:"His successor watched it happen and picked up his cloak.",
-      firstLetter:"E",
-      explanation:"2 Kings 2:11 — Elisha received a double portion of his spirit." },
+      question:"Who was the father of Bezalel, whom God chose for the work of the Tabernacle?\nസമാഗമനകൂടാരത്തിന്റെ പണിക്കായി ദൈവം തിരഞ്ഞെടുത്ത ബെസലേലിന്റെ പിതാവ് ആര്?",
+      answer:"Uri · ഊരി",
+      acceptedAnswers:["Uri","ഊരി","Oori"],
+      hint:"The verse names three generations: Bezalel, his father, and his grandfather Hur.",
+      firstLetter:"U",
+      explanation:"Exodus 31:2 — 'I have called by name Bezalel the son of Uri, son of Hur, of the tribe of Judah.'" },
     { id:"500B", points:500,
-      question:"In the book of Revelation, how many churches receive letters?",
-      answer:"Seven",
-      acceptedAnswers:["7","Seven churches"],
-      hint:"Ephesus and Laodicea are two of them.",
-      firstLetter:"S",
-      explanation:"Revelation 2–3 — Ephesus, Smyrna, Pergamum, Thyatira, Sardis, Philadelphia, Laodicea." },
+      question:"What was the name of King Josiah's mother?\nയോശീയാ രാജാവിന്റെ അമ്മയുടെ പേര് എന്തായിരുന്നു?",
+      answer:"Jedidah · യെദീദാ",
+      acceptedAnswers:["Jedidah","യെദീദാ","Jedida","Yedida"],
+      hint:"Her name means 'beloved'; she was the daughter of Adaiah of Bozkath.",
+      firstLetter:"J",
+      explanation:"2 Kings 22:1 — Josiah's mother was Jedidah, the daughter of Adaiah of Bozkath." },
     { id:"500C", points:500,
       question:"Who is the oldest person recorded in the Bible, living 969 years?",
       answer:"Methuselah",
@@ -664,8 +664,8 @@ const DEFAULT_QUESTION_BANK = {
       explanation:"Matthew 17:3 — they spoke with Jesus on the high mountain." }
   ],
   tiebreaker: {
-    question:"Name BOTH the first and the last books of the Bible.",
-    answer:"Genesis and Revelation"
+    question:"Who was the father of the prophet Samuel?\nശമൂവേൽ പ്രവാചകന്റെ പിതാവ് ആരായിരുന്നു?",
+    answer:"Elkanah · എൽക്കാനാ (1 Samuel 1:1)"
   }
 };
 
@@ -1386,7 +1386,8 @@ function nudgeTime(d){
 /* Auto-check the typed answer against answer + acceptedAnswers.
    Purely advisory — the host still marks correct/wrong manually. */
 function normalizeAnswer(s){
-  return String(s).toLowerCase().replace(/[^a-z0-9äöüß ]+/g," ").replace(/\s+/g," ").trim();
+  // keep letters in any script (incl. Malayalam) and digits; drop punctuation
+  return String(s).toLowerCase().replace(/[^\p{L}\p{N} ]+/gu," ").replace(/\s+/g," ").trim();
 }
 function answerMatches(def, typed){
   const pool = [def.answer].concat(def.acceptedAnswers || []);
