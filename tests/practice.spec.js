@@ -128,6 +128,8 @@ test.describe('Real game regression', () => {
     await page.click('#btn-continue');
     await expect(page.locator('#tc-0 .tscore')).toHaveText('100');
     await expect(page.locator('#turn-banner')).toContainText('pick a box');
+    // the answered tile shows the points won, not just a check mark
+    await expect(page.locator('#board-grid .tile.used')).toContainText('✔ +100');
   });
 
   test('special boxes award or deduct points when opened', async ({ page }) => {

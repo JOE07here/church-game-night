@@ -167,7 +167,11 @@
   .tile .val{font-size:clamp(1.4rem,3.5vw,2.2rem);}
   .tile .ltr{font-size:.85rem; opacity:.75; letter-spacing:.12em;}
   .tile:not(:disabled):hover{transform:translateY(-3px); filter:brightness(1.15);}
-  .tile.used{background:var(--panel); color:var(--muted); opacity:.55;}
+  .tile.used{background:var(--panel); color:var(--muted); opacity:.78;}
+  .tile.used .val{font-size:clamp(1.05rem,2.6vw,1.6rem);}
+  .tile.used .val.won{color:var(--good);}
+  .tile.used .val.lost{color:var(--bad);}
+  .tile .bonus{font-size:.72rem; font-weight:800; color:var(--warn);}
   .tile.pending{background:repeating-linear-gradient(45deg,var(--panel2),var(--panel2) 10px,var(--panel) 10px,var(--panel) 20px);
     color:var(--warn); border-color:var(--warn); opacity:.95;}
   .tile.pending .ltr{opacity:1;}
@@ -1185,8 +1189,13 @@ function renderBoard(){
     if (bs.status==="used"){
       btn.classList.add("used");
       btn.disabled = true;
-      btn.innerHTML = '<span class="val">'+(bs.gotIt ? "✔" : "✘")+'</span><span class="ltr">'+esc(state.teams[bs.usedBy].name)+'</span>';
-      btn.setAttribute("aria-label", def.points+" "+letter+" — answered");
+      const pts = bs.gotIt ? def.points : 0;
+      const bonus = bs.specialDelta != null
+        ? '<span class="bonus">🎁 '+(bs.specialDelta>0?"+":"")+bs.specialDelta+'</span>' : "";
+      btn.innerHTML = '<span class="val '+(bs.gotIt?"won":"lost")+'">'+(bs.gotIt ? "✔ +"+pts : "✘ 0")+'</span>'
+        + '<span class="ltr">'+esc(state.teams[bs.usedBy].name)+'</span>' + bonus;
+      btn.setAttribute("aria-label", def.points+" "+letter+" — answered: "+state.teams[bs.usedBy].name
+        +" scored "+pts+" points"+(bs.specialDelta!=null ? ", special box "+(bs.specialDelta>0?"+":"")+bs.specialDelta : ""));
     } else if (bs.status==="pending"){
       btn.classList.add("pending");
       // the owning team may answer its pending question on any of its turns
@@ -1262,6 +1271,7 @@ function openQuestion(boxId, isPending){
   if (state.specialBoxes && state.specialBoxes[boxId] !== undefined){
     const delta = state.specialBoxes[boxId];
     delete state.specialBoxes[boxId];
+    state.boxes[boxId].specialDelta = delta; // shown on the tile after the box is answered
     state.teams[team].score = Math.max(0, state.teams[team].score + delta);
     state.active.special = delta;
     if (delta > 0) sfx.gift(); else sfx.wrong();
